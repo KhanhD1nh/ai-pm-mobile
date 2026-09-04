@@ -36,8 +36,7 @@ yarn-error.*
 !.env.example
 
 # local bundle verification outputs
-.dist-test/
-.dist-ios-test/
+.dist-*/
 
 # typescript
 *.tsbuildinfo

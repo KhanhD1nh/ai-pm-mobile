@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, Tabs } from 'expo-router';
-import { LoadingScreen } from '@/components/ui/screen';
-import { useAuth } from '@/contexts/auth-context';
+import { LoadingScreen } from '@/shared/components/ui/screen';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function TabsLayout() {
   const { ready, user } = useAuth();

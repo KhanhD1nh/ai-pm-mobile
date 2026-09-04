@@ -1,0 +1,44 @@
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { issuesApi, issueKeys } from '@/features/issues/public';
+import { notificationsApi, notificationKeys } from '@/features/notifications/public';
+import { projectsApi, projectKeys } from '@/features/projects/public';
+
+export function useHomeDashboard(orgId?: string | null, userId?: string | null) {
+  const projects = useQuery({
+    queryKey: projectKeys.list(orgId),
+    queryFn: projectsApi.list,
+    enabled: !!orgId,
+  });
+  const issues = useQuery({
+    queryKey: issueKeys.myWork(orgId, userId),
+    queryFn: () => issuesApi.list({ assigneeId: userId!, limit: 100 }),
+    enabled: !!orgId && !!userId,
+  });
+  const unread = useQuery({
+    queryKey: notificationKeys.unread(),
+    queryFn: notificationsApi.unreadCount,
+    enabled: !!userId,
+  });
+
+  const derived = useMemo(() => {
+    const mine = issues.data ?? [];
+    const snapshotTime = issues.dataUpdatedAt;
+    return {
+      mine,
+      overdue: mine.filter((issue) => issue.due_date && snapshotTime > 0 && new Date(issue.due_date).getTime() < snapshotTime && issue.status?.category !== 'DONE'),
+      inProgress: mine.filter((issue) => issue.status?.category === 'IN_PROGRESS'),
+    };
+  }, [issues.data, issues.dataUpdatedAt]);
+
+  return {
+    projects,
+    issues,
+    unread,
+    ...derived,
+    refreshing: projects.isRefetching || issues.isRefetching,
+    refresh: async () => {
+      await Promise.all([projects.refetch(), issues.refetch(), unread.refetch()]);
+    },
+  };
+}
