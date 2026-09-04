@@ -1,0 +1,58 @@
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import { settingsApi } from './api';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: true,
+  }),
+});
+
+export async function registerForPushNotifications() {
+  if (!Device.isDevice) throw new Error('Push notifications cần thiết bị thật');
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'AI-PM',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 200, 120, 200],
+    });
+  }
+  const existing = await Notifications.getPermissionsAsync();
+  let status = existing.status;
+  if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
+  if (status !== 'granted') throw new Error('Quyền thông báo chưa được cấp');
+  const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) throw new Error('Thiếu EAS projectId để đăng ký Expo Push Token');
+  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  return settingsApi.registerDevice({
+    platform: Platform.OS === 'ios' ? 'IOS' : 'ANDROID',
+    pushProvider: 'EXPO',
+    pushToken: token,
+    deviceName: Device.deviceName ?? null,
+    appVersion: Constants.expoConfig?.version ?? null,
+  });
+}
+
+export async function syncAppBadge() {
+  try {
+    const { unread } = await settingsApi.unreadCount();
+    await Notifications.setBadgeCountAsync(unread);
+  } catch {
+    // Badge sync is best-effort.
+  }
+}
+
+export function routeFromNotificationData(data: Record<string, unknown> | undefined): string | null {
+  if (!data) return null;
+  if (typeof data.route === 'string' && data.route.startsWith('/')) return data.route;
+  const identifier = typeof data.issueIdentifier === 'string' ? data.issueIdentifier : typeof data.identifier === 'string' ? data.identifier : null;
+  if (identifier) return `/issue/${encodeURIComponent(identifier)}`;
+  const projectId = typeof data.projectId === 'string' ? data.projectId : null;
+  if (projectId) return `/project/${projectId}`;
+  return null;
+}

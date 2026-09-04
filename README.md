@@ -1,56 +1,64 @@
-# Welcome to your Expo app 👋
+# AI-PM Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native / Expo SDK 57 client for AI-PM. The mobile app uses the same backend, authentication, RBAC, projects, issues and notification contracts as the web client.
 
-## Get started
+## Implemented MVP
 
-1. Install dependencies
+- Authentication, initial System Owner setup, session restore and workspace switching
+- Home dashboard, Projects and project overview
+- Board with search/filter, create issue and quick status transitions
+- Full issue workflow: status, priority, assignee, cycle, milestone, tags, due date, focus schedule, Markdown description, participants, relations, comments and archive
+- My Work
+- Cycles, Milestones and Schedule overview/creation
+- Wiki list/read/create/edit
+- Project Members and Workflow statuses
+- Agents and AI Action revert
+- Global search
+- Profile/password, Organization members, System Users and AI Budget
+- Notification Inbox, unread state and realtime SSE
+- Expo Push device registration, badge sync, deep linking and cross-workspace routing
+- Persisted query cache for basic offline read access
+- Biometric app lock
 
-   ```bash
-   npm install
-   ```
+## Requirements
 
-2. Start the app
+- Node.js compatible with Expo SDK 57
+- AI-PM backend reachable from the device
+- Expo/EAS project for real push notifications
 
-   ```bash
-   npx expo start
-   ```
+Copy `.env.example` to `.env` and configure:
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```env
+EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:4000/api/v1
+EXPO_PUBLIC_EAS_PROJECT_ID=your-eas-project-id
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+`localhost` only works when the backend is reachable from the same runtime. On a physical phone use the machine's LAN address or the deployed API URL. Android Emulator commonly reaches the host at `10.0.2.2`.
 
-### Other setup steps
+## Run
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm install
+npx expo start
+```
 
-## Learn more
+Validation commands used by the project:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npx tsc --noEmit
+npx expo-doctor
+npx expo export --platform android --output-dir .dist-test
+npx expo export --platform ios --output-dir .dist-ios-test
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## EAS builds
 
-## Join the community
+After logging into Expo and linking the project, set `EXPO_PUBLIC_EAS_PROJECT_ID` and use the profiles in `eas.json`:
 
-Join our community of developers creating universal apps.
+```bash
+eas build --profile development --platform android
+eas build --profile preview --platform ios
+eas build --profile production --platform all
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Push notification receipt on a real device requires valid Expo/EAS credentials and platform push credentials. The app does not hard-code those credentials.
