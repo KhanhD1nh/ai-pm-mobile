@@ -27,6 +27,7 @@ describe('query key isolation', () => {
 
   it('isolates workspace-level notifications and agents by organization', () => {
     expect(notificationKeys.list('org-a')).not.toEqual(notificationKeys.list('org-b'));
+    expect(notificationKeys.list('org-a', 'ALL')).not.toEqual(notificationKeys.list('org-a', 'ALERTS'));
     expect(notificationKeys.unread('org-a')).not.toEqual(notificationKeys.unread('org-b'));
     expect(agentKeys.list('org-a')).not.toEqual(agentKeys.list('org-b'));
     expect(agentKeys.actions('org-a')).not.toEqual(agentKeys.actions('org-b'));

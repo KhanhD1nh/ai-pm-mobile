@@ -10,6 +10,7 @@ import type { AppTheme } from '@/shared/components/ui/theme';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useDebouncedValue } from '@/shared/hooks/use-debounced-value';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import type { Priority } from '@/shared/contracts';
 import { useBoardData } from '../queries/use-board-data';
 import { useCreateIssue } from '../mutations/use-board-mutations';
@@ -42,6 +43,7 @@ export default function BoardScreen() {
   }), [assigneeFilter, cycleFilter, debouncedSearch, priorityFilter]);
   const { project, statuses, members, cycles, issues, issueItems, refresh } = useBoardData(projectId, boardFilters);
   const create = useCreateIssue(projectId);
+  const pullRefresh = usePullToRefresh(refresh);
 
   const orderedStatuses = useMemo(() => [...(statuses.data ?? [])].sort((a, b) => a.position - b.position), [statuses.data]);
 
@@ -89,8 +91,8 @@ export default function BoardScreen() {
         keyExtractor={(issue) => issue.id}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
-        refreshing={issues.isRefetching}
-        onRefresh={() => void refresh()}
+        refreshing={pullRefresh.refreshing}
+        onRefresh={pullRefresh.onRefresh}
         onEndReachedThreshold={0.45}
         onEndReached={() => {
           if (issues.hasNextPage && !issues.isFetchingNextPage) void issues.fetchNextPage();

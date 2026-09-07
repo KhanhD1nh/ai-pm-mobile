@@ -6,6 +6,7 @@ import { SectionHeader } from '@/shared/components/ui/mobile';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { LoadingScreen, Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { useProjectDashboard } from '../hooks/use-project-dashboard';
 
@@ -13,7 +14,8 @@ export default function ProjectHomeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
-  const { project, report, refreshing, refresh } = useProjectDashboard(projectId);
+  const { project, report, refresh } = useProjectDashboard(projectId);
+  const pullRefresh = usePullToRefresh(refresh);
 
   if (project.isLoading) return <LoadingScreen />;
   if (!project.data) return <Screen><Text style={{ color: ui.colors.textSecondary }}>{language === 'vi' ? 'Không tìm thấy dự án.' : 'Project not found.'}</Text></Screen>;
@@ -29,7 +31,7 @@ export default function ProjectHomeScreen() {
   const healthy = alerts.length === 0;
 
   return (
-    <Screen edges={[]} refreshing={refreshing} onRefresh={() => void refresh()}>
+    <Screen edges={[]} refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh}>
       <View style={styles.overview}>
         <View style={styles.overviewTop}>
           <View style={styles.progressBlock}>

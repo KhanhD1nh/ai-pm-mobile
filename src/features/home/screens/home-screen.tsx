@@ -6,6 +6,7 @@ import { GlassIconButton, SectionHeader } from '@/shared/components/ui/mobile';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { useAuth } from '@/providers/auth-provider';
 import { useHomeDashboard } from '../hooks/use-home-dashboard';
@@ -15,7 +16,8 @@ export default function HomeScreen() {
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const org = organizations.find((item) => item.id === orgId);
-  const { projects, overdue, inProgress, refreshing, refresh } = useHomeDashboard(orgId, user?.id);
+  const { projects, overdue, inProgress, refresh } = useHomeDashboard(orgId, user?.id);
+  const pullRefresh = usePullToRefresh(refresh);
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
   const firstName = user?.name?.trim().split(/\s+/)[0] || (language === 'vi' ? 'bạn' : 'there');
   const dateLabel = new Date().toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -34,7 +36,7 @@ export default function HomeScreen() {
         : 'Nothing urgent right now.';
 
   return (
-    <Screen refreshing={refreshing} onRefresh={() => void refresh()}>
+    <Screen refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh}>
       <View style={styles.topBar}>
         <MotionPressable
           accessibilityRole="button"

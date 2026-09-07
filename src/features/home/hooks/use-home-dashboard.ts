@@ -24,9 +24,13 @@ export function useHomeDashboard(orgId?: string | null, userId?: string | null) 
   const derived = useMemo(() => {
     const mine = issues.data ?? [];
     const snapshotTime = issues.dataUpdatedAt;
+    const snapshotDate = snapshotTime > 0 ? new Date(snapshotTime) : null;
+    const todayKey = snapshotDate
+      ? `${snapshotDate.getFullYear()}-${String(snapshotDate.getMonth() + 1).padStart(2, '0')}-${String(snapshotDate.getDate()).padStart(2, '0')}`
+      : null;
     return {
       mine,
-      overdue: mine.filter((issue) => issue.due_date && snapshotTime > 0 && new Date(issue.due_date).getTime() < snapshotTime && issue.status?.category !== 'DONE'),
+      overdue: mine.filter((issue) => issue.due_date && todayKey && issue.due_date.slice(0, 10) < todayKey && issue.status?.category !== 'DONE'),
       inProgress: mine.filter((issue) => issue.status?.category === 'IN_PROGRESS'),
     };
   }, [issues.data, issues.dataUpdatedAt]);

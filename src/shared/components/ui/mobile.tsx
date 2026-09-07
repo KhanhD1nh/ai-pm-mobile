@@ -1,13 +1,20 @@
 import Ionicons, { type IoniconsIconName } from '@react-native-vector-icons/ionicons';
-import { useMemo, type PropsWithChildren, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown, useReducedMotion } from 'react-native-reanimated';
+import { useCallback, useEffect, useMemo, useState, type PropsWithChildren, type ReactNode } from 'react';
+import { Animated as RNAnimated, Dimensions, Easing, Keyboard, KeyboardAvoidingView, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import Reanimated, { LinearTransition, ReduceMotion, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import type { AppTheme } from './theme';
 import { MotionPressable } from './motion';
 import { LiquidGlassSurface } from './glass';
 import { Field } from './primitives';
+
+const sheetResizeTransition = LinearTransition
+  .springify()
+  .damping(30)
+  .stiffness(220)
+  .mass(0.85)
+  .reduceMotion(ReduceMotion.System);
 
 export function SectionHeader({ title, caption, right }: { title: string; caption?: string; right?: ReactNode }) {
   const { theme: ui } = useAppPreferences();
@@ -23,16 +30,25 @@ export function SectionHeader({ title, caption, right }: { title: string; captio
   );
 }
 
-export function GlassIconButton({ icon, label, onPress, selected = false }: {
+export function GlassIconButton({ icon, label, onPress, selected = false, disabled = false }: {
   icon: IoniconsIconName;
   label: string;
   onPress: () => void;
   selected?: boolean;
+  disabled?: boolean;
 }) {
   const { theme: ui, themePreference, resolvedTheme } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected }} hitSlop={4} onPress={onPress} style={styles.glassIconHit}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
+      hitSlop={4}
+      onPress={onPress}
+      style={styles.glassIconHit}
+    >
       {({ pressed }) => (
         <LiquidGlassSurface
           variant="regular"
@@ -42,8 +58,8 @@ export function GlassIconButton({ icon, label, onPress, selected = false }: {
           fallbackStyle={styles.glassIconFallback}
         >
           {/* Fade the symbol only; fading a native glass ancestor can hide its material. */}
-          <View pointerEvents="none" style={pressed && styles.glassIconPressedContent}>
-            <Ionicons accessible={false} name={icon} size={ui.header.iconSize} color={selected ? ui.colors.accentStrong : ui.colors.text} />
+          <View pointerEvents="none" style={[pressed && styles.glassIconPressedContent, disabled && styles.glassIconDisabledContent]}>
+            <Ionicons accessible={false} name={icon} size={ui.header.iconSize} color={disabled ? ui.colors.textMuted : (selected ? ui.colors.accentStrong : ui.colors.text)} />
           </View>
         </LiquidGlassSurface>
       )}
@@ -66,14 +82,14 @@ export function HeaderBackButton({ onPress, kind = 'back', label }: {
 }
 
 export function SearchBar({ containerStyle, ...props }: TextInputProps & { containerStyle?: StyleProp<ViewStyle> }) {
-  const { theme: ui } = useAppPreferences();
+  const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   return (
     <View style={[styles.searchBar, containerStyle]}>
       <Ionicons accessible={false} name="search-outline" size={18} color={ui.colors.textMuted} />
       <Field {...props} style={[styles.searchBarField, props.style]} />
       {typeof props.value === 'string' && props.value.length > 0 && props.onChangeText ? (
-        <MotionPressable accessibilityRole="button" accessibilityLabel="Clear search" hitSlop={8} onPress={() => props.onChangeText?.('')} style={styles.searchClear}>
+        <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Xóa nội dung tìm kiếm' : 'Clear search'} hitSlop={8} onPress={() => props.onChangeText?.('')} style={styles.searchClear}>
           <Ionicons accessible={false} name="close-circle" size={18} color={ui.colors.textMuted} />
         </MotionPressable>
       ) : null}
@@ -124,8 +140,10 @@ export function ContentTabs({ items, value, onChange }: { items: { key: string; 
             onPress={() => onChange(item.key)}
             style={styles.contentTab}
           >
-            <Text style={[styles.contentTabText, active && styles.contentTabTextActive]}>{item.label}</Text>
-            <View style={[styles.contentTabIndicator, active && styles.contentTabIndicatorActive]} />
+            <View style={styles.contentTabLabel}>
+              <Text style={[styles.contentTabText, active && styles.contentTabTextActive]}>{item.label}</Text>
+              <View style={[styles.contentTabIndicator, active && styles.contentTabIndicatorActive]} />
+            </View>
           </MotionPressable>
         );
       })}
@@ -176,49 +194,208 @@ export function ListRow({ icon, label, value, detail, onPress, trailing, danger 
 }
 
 export function BottomSheet({ visible, title, subtitle, onClose, children, footer }: PropsWithChildren<{ visible: boolean; title: string; subtitle?: string; onClose: () => void; footer?: ReactNode }>) {
-  const { theme: ui } = useAppPreferences();
+  const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // Keep the native Modal mounted long enough to animate an externally-driven
+  // dismissal (for example after a successful assignee/status selection).
+  // Binding Modal.visible directly to the parent `visible` prop makes the
+  // native modal disappear before our exit animation can run.
+  const [presented, setPresented] = useState(visible);
+  // Keep one Animated.Value for the component lifetime. `windowHeight` may
+  // change while the keyboard opens on Android; recreating the value there
+  // would replay the sheet entrance while the user is typing.
+  const dragY = useMemo(() => new RNAnimated.Value(Dimensions.get('window').height), []);
+  const scrimOpacity = useMemo(() => new RNAnimated.Value(0), []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const runCloseAnimation = useCallback((afterClose: () => void) => {
+    dragY.stopAnimation();
+    scrimOpacity.stopAnimation();
+
+    if (reduceMotion) {
+      scrimOpacity.setValue(0);
+      dragY.setValue(windowHeight);
+      requestAnimationFrame(afterClose);
+      return;
+    }
+
+    RNAnimated.parallel([
+      RNAnimated.timing(scrimOpacity, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(dragY, {
+        toValue: windowHeight,
+        duration: 280,
+        easing: Easing.bezier(0.4, 0, 0.7, 0.2),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (!finished) return;
+      afterClose();
+    });
+  }, [dragY, reduceMotion, scrimOpacity, windowHeight]);
+
+  const requestClose = useCallback(() => {
+    runCloseAnimation(() => {
+      // React batches this local state update with the parent `onClose`
+      // update, so there is no intermediate frame that can reopen the sheet.
+      setPresented(false);
+      onClose();
+    });
+  }, [onClose, runCloseAnimation]);
+
+  useEffect(() => {
+    dragY.stopAnimation();
+    scrimOpacity.stopAnimation();
+
+    if (!visible) {
+      if (presented) {
+        runCloseAnimation(() => setPresented(false));
+      }
+      return;
+    }
+
+    if (!presented) {
+      const frame = requestAnimationFrame(() => setPresented(true));
+      return () => cancelAnimationFrame(frame);
+    }
+
+    if (reduceMotion) {
+      dragY.setValue(0);
+      scrimOpacity.setValue(1);
+      return;
+    }
+
+    // Use a slightly longer, non-bouncy spring for the sheet and a coordinated
+    // scrim fade. This feels closer to the native iOS sheet cadence than moving
+    // a full screen height with a short 240ms timing curve.
+    dragY.setValue(windowHeight);
+    scrimOpacity.setValue(0);
+    RNAnimated.parallel([
+      RNAnimated.timing(scrimOpacity, {
+        toValue: 1,
+        duration: 240,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      RNAnimated.spring(dragY, {
+        toValue: 0,
+        damping: 30,
+        stiffness: 220,
+        mass: 0.9,
+        overshootClamping: true,
+        restDisplacementThreshold: 0.5,
+        restSpeedThreshold: 0.5,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    return () => {
+      dragY.stopAnimation();
+      scrimOpacity.stopAnimation();
+    };
+  }, [dragY, presented, reduceMotion, runCloseAnimation, scrimOpacity, visible, windowHeight]);
+
+  const restoreFromDrag = useCallback(() => {
+    RNAnimated.parallel([
+      RNAnimated.spring(dragY, { toValue: 0, damping: 24, stiffness: 280, mass: 0.8, useNativeDriver: true }),
+      RNAnimated.timing(scrimOpacity, { toValue: 1, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [dragY, scrimOpacity]);
+
+  const panResponder = useMemo(() => PanResponder.create({
+    // The whole top drag zone (grabber + title/subtitle) is an explicit dismiss
+    // affordance. Claim touches immediately so the gesture stays attached to
+    // the finger even when it starts away from the tiny visual handle.
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      dragY.stopAnimation();
+      dragY.setValue(0);
+    },
+    onPanResponderMove: (_, gesture) => {
+      const offset = Math.max(0, gesture.dy);
+      dragY.setValue(offset);
+      scrimOpacity.setValue(Math.max(0.45, 1 - offset / Math.max(windowHeight * 0.72, 1)));
+    },
+    onPanResponderRelease: (_, gesture) => {
+      const isDownwardSwipe = gesture.dy > 0 && Math.abs(gesture.dy) > Math.abs(gesture.dx);
+      if (isDownwardSwipe && (gesture.dy > 44 || gesture.vy > 0.55)) {
+        requestClose();
+        return;
+      }
+      restoreFromDrag();
+    },
+    onPanResponderTerminate: () => {
+      restoreFromDrag();
+    },
+  }), [dragY, requestClose, restoreFromDrag, scrimOpacity, windowHeight]);
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible={presented} transparent animationType="none" onRequestClose={requestClose} statusBarTranslucent>
       <View style={styles.backdrop}>
-        {/* Only the scrim fades. The sheet and its glass close button stay outside it. */}
-        <Animated.View
-          entering={reduceMotion ? undefined : FadeIn.duration(160)}
-          exiting={reduceMotion ? undefined : FadeOut.duration(120)}
+        <RNAnimated.View
           pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: ui.colors.overlay }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: ui.colors.overlay, opacity: scrimOpacity }]}
         />
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={requestClose} />
         <KeyboardAvoidingView style={styles.keyboardFrame} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Animated.View
-            entering={reduceMotion ? undefined : (Platform.OS === 'android'
-              ? SlideInDown.springify().damping(20).stiffness(220).mass(0.8)
-              : SlideInDown.duration(240).easing(Easing.out(Easing.cubic)))}
-            exiting={reduceMotion ? undefined : SlideOutDown.duration(180).easing(Easing.in(Easing.cubic))}
-            style={styles.sheetFrame}
-          >
-            <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) }, Platform.OS === 'android' && styles.sheetAndroid]}>
-              <View style={styles.handle} />
-              <View style={styles.sheetHeader}>
-                <View style={styles.sheetTitleCopy}>
-                  <Text style={styles.sheetTitle}>{title}</Text>
-                  {subtitle ? <Text style={styles.sheetSubtitle}>{subtitle}</Text> : null}
+          <Reanimated.View layout={sheetResizeTransition} style={styles.sheetFrame}>
+            <RNAnimated.View style={{ transform: [{ translateY: dragY }] }}>
+              <View style={[
+                styles.sheet,
+                { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) },
+                Platform.OS === 'android' && styles.sheetAndroid,
+              ]}>
+                <View {...panResponder.panHandlers} style={styles.sheetDragZone}>
+                  <View
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel={language === 'vi' ? 'Đóng bảng' : 'Dismiss sheet'}
+                    accessibilityHint={language === 'vi' ? 'Kéo xuống để đóng' : 'Swipe down to dismiss'}
+                    accessibilityActions={[{ name: 'activate', label: language === 'vi' ? 'Đóng' : 'Dismiss' }]}
+                    onAccessibilityAction={(event) => {
+                      if (event.nativeEvent.actionName === 'activate') requestClose();
+                    }}
+                    style={styles.handleHitArea}
+                  >
+                    <View style={styles.handle} />
+                  </View>
+                  <View style={styles.sheetHeader}>
+                    <View style={styles.sheetTitleCopy}>
+                      <Text style={styles.sheetTitle}>{title}</Text>
+                      {subtitle ? <Text style={styles.sheetSubtitle}>{subtitle}</Text> : null}
+                    </View>
+                  </View>
                 </View>
-                <HeaderBackButton kind="close" onPress={onClose} />
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={[styles.sheetContent, footer ? styles.sheetContentWithFooter : undefined]}
+                >
+                  {children}
+                </ScrollView>
+                {footer ? <View style={styles.sheetFooter}>{footer}</View> : null}
               </View>
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.sheetContent}
-              >
-                {children}
-              </ScrollView>
-              {footer ? <View style={styles.sheetFooter}>{footer}</View> : null}
-            </View>
-          </Animated.View>
+            </RNAnimated.View>
+          </Reanimated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -248,6 +425,7 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   glassIconButton: { width: ui.header.actionSize, height: ui.header.actionSize, borderRadius: ui.header.actionSize / 2, alignItems: 'center', justifyContent: 'center' },
   glassIconFallback: { backgroundColor: ui.colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: ui.colors.border },
   glassIconPressedContent: { opacity: 0.6 },
+  glassIconDisabledContent: { opacity: 0.5 },
   searchBar: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 13, paddingRight: 8, borderRadius: 13, backgroundColor: ui.colors.surfaceRaised },
   searchBarField: { flex: 1, minHeight: 46, height: 46, borderWidth: 0, paddingHorizontal: 0, backgroundColor: 'transparent' },
   searchClear: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
@@ -257,7 +435,8 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   segmentText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '500' },
   segmentTextActive: { color: ui.colors.text, fontWeight: '600' },
   contentTabs: { minHeight: 46, flexDirection: 'row', alignItems: 'stretch', gap: 22, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.colors.border },
-  contentTab: { minWidth: 56, minHeight: 46, justifyContent: 'center', position: 'relative' },
+  contentTab: { minWidth: 56, minHeight: 46, justifyContent: 'center' },
+  contentTabLabel: { alignSelf: 'flex-start', minHeight: 46, justifyContent: 'center', position: 'relative' },
   contentTabText: { color: ui.colors.textMuted, ...ui.typography.bodyStrong, fontSize: 14.5, fontWeight: '500' },
   contentTabTextActive: { color: ui.colors.text, fontWeight: '600' },
   contentTabIndicator: { position: 'absolute', left: 0, right: 0, bottom: -StyleSheet.hairlineWidth, height: 2, borderRadius: 1, backgroundColor: 'transparent' },
@@ -278,13 +457,16 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   sheetFrame: { maxHeight: '88%', width: '100%' },
   sheet: { maxHeight: '100%', borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden', paddingBottom: 12, backgroundColor: ui.colors.bgElevated, borderTopWidth: StyleSheet.hairlineWidth, borderColor: ui.colors.borderStrong, ...ui.shadow.floating },
   sheetAndroid: { borderTopLeftRadius: 30, borderTopRightRadius: 30, elevation: 18 },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: ui.colors.borderStrong, alignSelf: 'center', marginTop: 9 },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 12 },
+  sheetDragZone: { minHeight: Platform.OS === 'android' ? 94 : 88 },
+  handleHitArea: { minHeight: Platform.OS === 'android' ? 48 : 44, alignItems: 'center', justifyContent: 'center' },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: ui.colors.borderStrong },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingHorizontal: 16, paddingTop: 0, paddingBottom: 10 },
   sheetTitleCopy: { flex: 1, minWidth: 0 },
   sheetTitle: { color: ui.colors.text, ...ui.typography.title },
   sheetSubtitle: { color: ui.colors.textMuted, ...ui.typography.caption, marginTop: 3 },
-  sheetContent: { paddingHorizontal: 16, paddingBottom: 18, gap: 10 },
-  sheetFooter: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border },
+  sheetContent: { paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  sheetContentWithFooter: { paddingBottom: 10 },
+  sheetFooter: { paddingHorizontal: 16, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border },
   choice: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: ui.radius.md, paddingHorizontal: 13, paddingVertical: 10, backgroundColor: ui.colors.surface },
   choiceActive: { backgroundColor: ui.colors.accentSoft },
   choiceCopy: { flex: 1, minWidth: 0 },

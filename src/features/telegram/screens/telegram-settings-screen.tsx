@@ -5,6 +5,7 @@ import { ListGroup, ListRow, SectionHeader } from '@/shared/components/ui/mobile
 import { ErrorState, LoadingScreen, Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
 import { presentError } from '@/shared/errors/present-error';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { useCreateTelegramLink, useTelegramSettings, useUnlinkTelegram, useUpdateTelegramPreference } from '../public';
 import type { TelegramPreferenceKey } from '../contracts';
@@ -24,6 +25,7 @@ export default function TelegramSettingsScreen() {
   const createLink = useCreateTelegramLink();
   const unlink = useUnlinkTelegram();
   const updatePreference = useUpdateTelegramPreference();
+  const pullRefresh = usePullToRefresh(() => settings.refetch());
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [pairCode, setPairCode] = useState<string | null>(null);
 
@@ -89,8 +91,8 @@ export default function TelegramSettingsScreen() {
       chrome="stack"
       title="Telegram"
       subtitle={data?.linked ? (data.telegramUsername ? `@${data.telegramUsername}` : (language === 'vi' ? 'Đã liên kết' : 'Connected')) : (language === 'vi' ? 'Tài khoản & thông báo' : 'Account & notifications')}
-      refreshing={settings.isRefetching}
-      onRefresh={() => void settings.refetch()}
+      refreshing={pullRefresh.refreshing}
+      onRefresh={pullRefresh.onRefresh}
     >
       {!data?.linked ? (
         <>

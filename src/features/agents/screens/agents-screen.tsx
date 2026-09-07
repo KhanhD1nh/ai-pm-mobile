@@ -7,6 +7,7 @@ import { BottomSheet, GlassIconButton, ListGroup, ListRow, SectionHeader } from 
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useAuth } from '@/providers/auth-provider';
@@ -23,6 +24,7 @@ export default function AgentsScreen() {
   const create = useCreateAgent(orgId);
   const toggle = useToggleAgent(orgId);
   const revert = useRevertAiAction(orgId);
+  const pullRefresh = usePullToRefresh(() => Promise.all([agents.refetch(), actions.refetch()]));
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [provider, setProvider] = useState('custom');
@@ -46,8 +48,8 @@ export default function AgentsScreen() {
       chrome="stack"
       title="Agents"
       subtitle={`${agents.data?.length ?? 0} agents`}
-      refreshing={agents.isRefetching}
-      onRefresh={() => { void agents.refetch(); void actions.refetch(); }}
+      refreshing={pullRefresh.refreshing}
+      onRefresh={pullRefresh.onRefresh}
       right={<GlassIconButton icon="add" label={language === 'vi' ? 'Tạo agent' : 'New agent'} onPress={() => setOpen(true)} />}
     >
       <SectionHeader

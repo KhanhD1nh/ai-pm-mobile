@@ -6,6 +6,7 @@ import { BottomSheet, ChoiceRow, ListGroup, SectionHeader } from '@/shared/compo
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useAuth } from '@/providers/auth-provider';
@@ -26,6 +27,7 @@ export default function OrganizationScreen() {
   const addMember = useAddOrganizationMember(orgId);
   const updateMember = useUpdateOrganizationMember(orgId);
   const removeMember = useRemoveOrganizationMember(orgId);
+  const pullRefresh = usePullToRefresh(() => Promise.all([members.refetch(), budget.refetch()]));
   const [email, setEmail] = useState('');
   const [memberSheet, setMemberSheet] = useState<any | null>(null);
 
@@ -39,7 +41,7 @@ export default function OrganizationScreen() {
   const pct = limit > 0 ? Math.min(100, Math.round((usage / limit) * 100)) : 0;
 
   return (
-    <Screen chrome="stack" title={org.name} subtitle={org.role ?? 'System Owner'} refreshing={members.isRefetching} onRefresh={() => { void members.refetch(); void budget.refetch(); }}>
+    <Screen chrome="stack" title={org.name} subtitle={org.role ?? 'System Owner'} refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh}>
       <OrganizationNameForm key={`${org.id}-${org.name}`} organization={org} saving={updateOrg.isPending} onSubmit={saveWorkspace} language={language} />
 
       <SectionHeader title="AI Budget" caption={`${pct}%`} />

@@ -5,6 +5,11 @@ export type ScheduledIssue = Pick<Issue, 'id' | 'identifier' | 'title' | 'priori
   status?: string | null;
 };
 
+type CalendarResponse = {
+  count: number;
+  schedule: ScheduledIssue[];
+};
+
 export const issuesApi = {
   list: (params: Record<string, string | number | undefined>) => {
     const qs = new URLSearchParams();
@@ -13,7 +18,10 @@ export const issuesApi = {
     });
     return request<Issue[]>(`/issues?${qs}`);
   },
-  calendar: (projectId: string) => request<ScheduledIssue[]>(`/issues/calendar?projectId=${encodeURIComponent(projectId)}`),
+  calendar: async (projectId: string) => {
+    const response = await request<CalendarResponse>(`/issues/calendar?projectId=${encodeURIComponent(projectId)}`);
+    return Array.isArray(response.schedule) ? response.schedule : [];
+  },
   get: (identifier: string) => request<Issue>(`/issues/${identifier}`),
   create: (data: Record<string, unknown>) => request<Issue>('/issues', { method: 'POST', body: JSON.stringify(data) }),
   update: (identifier: string, data: Record<string, unknown>) => request<Issue>(`/issues/${identifier}`, { method: 'PATCH', body: JSON.stringify(data) }),

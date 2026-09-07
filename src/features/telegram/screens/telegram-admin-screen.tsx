@@ -4,6 +4,7 @@ import { ListGroup, ListRow, SectionHeader } from '@/shared/components/ui/mobile
 import { ErrorState, LoadingScreen, Screen } from '@/shared/components/ui/screen';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAuth } from '@/providers/auth-provider';
 import { useRegisterTelegramWebhook, useTelegramAdmin, useTestTelegramBot, useUpdateTelegramAdmin } from '../public';
 import { useState } from 'react';
@@ -16,6 +17,7 @@ export default function TelegramAdminScreen() {
   const update = useUpdateTelegramAdmin();
   const test = useTestTelegramBot();
   const register = useRegisterTelegramWebhook();
+  const pullRefresh = usePullToRefresh(() => Promise.all([settings.refetch(), webhook.refetch()]));
   const [token, setToken] = useState('');
   const [username, setUsername] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
@@ -45,7 +47,7 @@ export default function TelegramAdminScreen() {
     : webhook.data?.error;
 
   return (
-    <Screen chrome="stack" title="Telegram Bot" subtitle={vi ? 'Quản trị hệ thống' : 'System administration'} refreshing={settings.isRefetching || webhook.isRefetching} onRefresh={() => { void settings.refetch(); void webhook.refetch(); }}>
+    <Screen chrome="stack" title="Telegram Bot" subtitle={vi ? 'Quản trị hệ thống' : 'System administration'} refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh}>
       <SectionHeader title={vi ? 'Trạng thái' : 'Status'} />
       <ListGroup>
         <ListRow first icon="paper-plane-outline" label={vi ? 'Bật Telegram bot' : 'Enable Telegram bot'} detail={settings.data?.username ? `@${settings.data.username}` : undefined} trailing={<Switch value={Boolean(settings.data?.enabled)} disabled={update.isPending} onValueChange={toggleEnabled} trackColor={{ true: ui.colors.accent }} />} />

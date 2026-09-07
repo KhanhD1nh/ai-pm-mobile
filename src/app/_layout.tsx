@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { Platform, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProviders } from '@/providers/app-providers';
@@ -10,8 +10,22 @@ import { useAppPreferences } from '@/shared/preferences/app-preferences-context'
 
 function AppShell() {
   const { resolvedTheme, theme } = useAppPreferences();
+  const baseNavigationTheme = resolvedTheme === 'dark' ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseNavigationTheme,
+    colors: {
+      ...baseNavigationTheme.colors,
+      primary: theme.colors.accentStrong,
+      background: theme.colors.bg,
+      card: theme.colors.bg,
+      text: theme.colors.text,
+      border: theme.colors.border,
+      notification: theme.colors.danger,
+    },
+  };
+
   return (
-    <>
+    <ThemeProvider value={navigationTheme}>
       <StatusBar
         barStyle={resolvedTheme === 'dark' ? 'light-content' : 'dark-content'}
         translucent={Platform.OS === 'android'}
@@ -33,7 +47,7 @@ function AppShell() {
         <Stack.Screen name="login" options={{ animation: 'fade' }} />
       </Stack>
       <AppLockBootstrap />
-    </>
+    </ThemeProvider>
   );
 }
 

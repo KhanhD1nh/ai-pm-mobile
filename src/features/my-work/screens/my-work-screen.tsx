@@ -5,6 +5,7 @@ import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Screen } from '@/shared/components/ui/screen';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { useAuth } from '@/providers/auth-provider';
 import { useMyWork } from '../hooks/use-my-work';
@@ -14,6 +15,7 @@ export default function MyWorkScreen() {
   const { theme: ui, language, t } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const { query, issues, sections } = useMyWork(orgId, user?.id);
+  const pullRefresh = usePullToRefresh(() => query.refetch());
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
   const sectionData = useMemo(
     () => sections.filter(([, list]) => list.length > 0).map(([title, list]) => ({ title, data: list })),
@@ -22,6 +24,7 @@ export default function MyWorkScreen() {
 
   return (
     <Screen
+      chrome="stack"
       title={t('myWork.title')}
       subtitle={issues.length > 0 ? `${issues.length} ${t('myWork.workCount')}` : undefined}
       scroll={false}
@@ -31,8 +34,8 @@ export default function MyWorkScreen() {
         keyExtractor={(issue) => issue.id}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
-        refreshing={query.isRefetching}
-        onRefresh={() => void query.refetch()}
+        refreshing={pullRefresh.refreshing}
+        onRefresh={pullRefresh.onRefresh}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<EmptyState title={t('myWork.empty')} />}
         renderSectionHeader={({ section }) => (

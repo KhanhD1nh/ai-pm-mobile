@@ -2,6 +2,7 @@ import { Alert, Platform, Switch, Text, View } from 'react-native';
 import { Button } from '@/shared/components/ui/primitives';
 import { ListGroup, ListRow, SectionHeader } from '@/shared/components/ui/mobile';
 import { Screen } from '@/shared/components/ui/screen';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useMobileSettings } from '../hooks/use-mobile-settings';
@@ -9,6 +10,7 @@ import { useMobileSettings } from '../hooks/use-mobile-settings';
 export default function MobileSettingsScreen() {
   const { theme: ui, language } = useAppPreferences();
   const { devices, busy, biometric, enablePush, disableDevice, toggleBiometric } = useMobileSettings();
+  const pullRefresh = usePullToRefresh(() => devices.refetch());
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
 
   const handleEnablePush = async () => {
@@ -29,7 +31,7 @@ export default function MobileSettingsScreen() {
   };
 
   return (
-    <Screen chrome="stack" title={language === 'vi' ? 'Cài đặt thiết bị' : 'Device settings'} subtitle={Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'web' ? 'Web' : 'Android'} refreshing={devices.isRefetching} onRefresh={() => void devices.refetch()}>
+    <Screen chrome="stack" title={language === 'vi' ? 'Cài đặt thiết bị' : 'Device settings'} subtitle={Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'web' ? 'Web' : 'Android'} refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh}>
       <SectionHeader title={language === 'vi' ? 'Thông báo' : 'Notifications'} caption={language === 'vi' ? 'Cách AI-PM liên hệ với bạn' : 'How AI-PM reaches you'} />
       <ListGroup>
         <ListRow first icon="notifications-outline" label={language === 'vi' ? 'Push notifications' : 'Push notifications'} detail={language === 'vi' ? 'Nhận thông báo khi app đang nền hoặc đã đóng.' : 'Receive alerts while the app is backgrounded or closed.'} trailing={<Button title={busy ? '…' : (language === 'vi' ? 'Bật' : 'Enable')} disabled={busy || Platform.OS === 'web'} onPress={() => void handleEnablePush()} />} />

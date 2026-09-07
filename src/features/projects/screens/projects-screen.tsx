@@ -7,6 +7,7 @@ import { BottomSheet, GlassIconButton } from '@/shared/components/ui/mobile';
 import { EmptyState, Screen } from '@/shared/components/ui/screen';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useAuth } from '@/providers/auth-provider';
@@ -18,6 +19,7 @@ export default function ProjectsScreen() {
   const { theme: ui, t, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const projects = useProjects(orgId);
+  const pullRefresh = usePullToRefresh(() => projects.refetch());
   const create = useCreateProject();
   const [open, setOpen] = useState(false);
   const [key, setKey] = useState('');
@@ -45,8 +47,8 @@ export default function ProjectsScreen() {
         data={projects.data ?? []}
         keyExtractor={(project) => project.id}
         showsVerticalScrollIndicator={false}
-        refreshing={projects.isRefetching}
-        onRefresh={() => void projects.refetch()}
+        refreshing={pullRefresh.refreshing}
+        onRefresh={pullRefresh.onRefresh}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={(
           <View style={styles.appBar}>

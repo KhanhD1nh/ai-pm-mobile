@@ -29,9 +29,10 @@ export default function TabsLayout() {
         queryKey: issueKeys.myWork(orgId, user.id),
         queryFn: () => issuesApi.list({ assigneeId: user.id, limit: 100, sortBy: 'updated_at', sortOrder: 'desc' }),
       }),
-      queryClient.prefetchQuery({
-        queryKey: notificationKeys.list(orgId, false),
-        queryFn: () => notificationsApi.list(false),
+      queryClient.prefetchInfiniteQuery({
+        queryKey: notificationKeys.list(orgId, 'ALL'),
+        queryFn: ({ pageParam }) => notificationsApi.list({ filter: 'ALL', limit: 40, offset: pageParam }),
+        initialPageParam: 0,
       }),
       queryClient.prefetchQuery({
         queryKey: notificationKeys.unread(orgId),

@@ -1,11 +1,12 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { BottomSheet, ChoiceRow, GlassIconButton } from '@/shared/components/ui/mobile';
-import { EmptyState, Screen } from '@/shared/components/ui/screen';
+import { EmptyState, ErrorState, Screen } from '@/shared/components/ui/screen';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import type { NotificationItem } from '@/shared/contracts';
 import { NOTIFICATION_FILTERS, type NotificationFilter } from '../model/notification-filter';
@@ -28,6 +29,7 @@ export default function InboxScreen() {
   const { theme: ui, language, t } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const { notifications, unread, markAll, items, prepareOpen, refresh } = useNotificationInbox(filter);
+  const pullRefresh = usePullToRefresh(refresh);
   const locale = language === 'vi' ? 'vi-VN' : 'en-US';
   const filterLabels: Record<NotificationFilter, string> = language === 'vi'
     ? { ALL: 'Tất cả', UNREAD: 'Chưa đọc', ASSIGNED: 'Được giao', MENTIONS: 'Nhắc đến', ALERTS: 'Cảnh báo', AI: 'AI' }
@@ -46,8 +48,12 @@ export default function InboxScreen() {
         data={items}
         keyExtractor={(notification) => notification.id}
         showsVerticalScrollIndicator={false}
-        refreshing={notifications.isRefetching}
-        onRefresh={() => void refresh()}
+        refreshing={pullRefresh.refreshing}
+        onRefresh={pullRefresh.onRefresh}
+        onEndReachedThreshold={0.35}
+        onEndReached={() => {
+          if (notifications.hasNextPage && !notifications.isFetchingNextPage) void notifications.fetchNextPage();
+        }}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={(
           <View style={styles.headerBlock}>
@@ -56,7 +62,14 @@ export default function InboxScreen() {
                 <Text style={styles.heading}>{t('inbox.title')}</Text>
                 <Text style={styles.headingMeta}>{unread.data?.unread ?? 0} {t('inbox.unread')}</Text>
               </View>
-              <GlassIconButton icon="checkmark-done-outline" label={language === 'vi' ? 'Đánh dấu tất cả đã đọc' : 'Mark all as read'} onPress={() => markAll.mutate()} />
+              <View style={styles.headerActionSafeArea}>
+                <GlassIconButton
+                  icon="checkmark-done-outline"
+                  label={language === 'vi' ? 'Đánh dấu tất cả đã đọc' : 'Mark all as read'}
+                  disabled={(unread.data?.unread ?? 0) === 0 || markAll.isPending}
+                  onPress={() => markAll.mutate()}
+                />
+              </View>
             </View>
             <View style={styles.filterRow}>
               {PRIMARY_FILTERS.map((item) => {
@@ -79,7 +92,14 @@ export default function InboxScreen() {
             ) : null}
           </View>
         )}
-        ListEmptyComponent={<EmptyState title={t('inbox.empty')} />}
+        ListEmptyComponent={notifications.isLoading
+          ? <View style={styles.loadingState}><ActivityIndicator color={ui.colors.accentStrong} /></View>
+          : notifications.isError
+            ? <ErrorState title={language === 'vi' ? 'Không thể tải thông báo' : 'Could not load notifications'} onRetry={() => void notifications.refetch()} />
+            : <EmptyState title={t('inbox.empty')} />}
+        ListFooterComponent={notifications.isFetchingNextPage
+          ? <View style={styles.pageLoader}><ActivityIndicator color={ui.colors.accentStrong} /></View>
+          : null}
         ItemSeparatorComponent={() => <View style={styles.notificationBorder} />}
         renderItem={({ item: notification }) => (
           <MotionPressable accessibilityRole="button" accessibilityLabel={notification.title || notification.type} onPress={() => void open(notification)} style={styles.notification}>
@@ -116,11 +136,14 @@ export default function InboxScreen() {
 
 const createStyles = (ui: AppTheme) => StyleSheet.create({
   listContent: { paddingBottom: 24 },
+  loadingState: { minHeight: 220, alignItems: 'center', justifyContent: 'center' },
+  pageLoader: { minHeight: 56, alignItems: 'center', justifyContent: 'center' },
   headerBlock: { gap: 16, paddingBottom: 4 },
   appBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 7 },
   headingCopy: { flex: 1, minWidth: 0 },
   heading: { color: ui.colors.text, ...ui.typography.screenTitle },
   headingMeta: { color: ui.colors.textMuted, ...ui.typography.caption, marginTop: 2 },
+  headerActionSafeArea: { flexShrink: 0, paddingRight: 12 },
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   filter: { flex: 1, minWidth: 0, minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 13, backgroundColor: ui.colors.surfaceRaised },
   filterActive: { backgroundColor: ui.colors.accentSoft },

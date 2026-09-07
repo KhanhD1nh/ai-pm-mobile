@@ -1,1 +1,1 @@
-export { default } from '@/features/settings/screens/more-screen';
+export { default } from '@/features/wiki/screens/wiki-screen';

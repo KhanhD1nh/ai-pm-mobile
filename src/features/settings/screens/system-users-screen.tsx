@@ -6,6 +6,7 @@ import { BottomSheet, GlassIconButton, SectionHeader } from '@/shared/components
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useAuth } from '@/providers/auth-provider';
@@ -18,6 +19,7 @@ export default function SystemUsersScreen() {
   const styles = useMemo(() => createStyles(ui), [ui]);
   const isOwner = Boolean(user?.isSystemOwner || user?.is_system_owner);
   const users = useSystemUsers(isOwner);
+  const pullRefresh = usePullToRefresh(() => users.refetch());
   const create = useCreateSystemUser();
   const remove = useDeleteSystemUser();
   const [open, setOpen] = useState(false);
@@ -35,8 +37,8 @@ export default function SystemUsersScreen() {
         data={users.data ?? []}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        refreshing={users.isRefetching}
-        onRefresh={() => void users.refetch()}
+        refreshing={pullRefresh.refreshing}
+        onRefresh={pullRefresh.onRefresh}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={<SectionHeader title={language === 'vi' ? 'Tài khoản hệ thống' : 'System accounts'} />}
         ItemSeparatorComponent={() => <View style={styles.border} />}

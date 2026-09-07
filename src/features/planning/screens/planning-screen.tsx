@@ -7,6 +7,7 @@ import { BottomSheet, SectionHeader } from '@/shared/components/ui/mobile';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { LoadingScreen, Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { usePlanning } from '../queries/use-planning';
@@ -24,7 +25,8 @@ export default function PlanningScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
-  const { project, cycles, milestones, scheduled, refreshing, refresh } = usePlanning(projectId);
+  const { project, cycles, milestones, scheduled, refresh } = usePlanning(projectId);
+  const pullRefresh = usePullToRefresh(refresh);
   const createCycle = useCreateCycle(projectId);
   const createMilestone = useCreateMilestone(projectId);
   const [mode, setMode] = useState<CreateMode>(null);
@@ -57,7 +59,7 @@ export default function PlanningScreen() {
   if (project.isLoading) return <LoadingScreen />;
 
   return (
-    <Screen edges={[]} refreshing={refreshing} onRefresh={() => void refresh()}>
+    <Screen edges={[]} refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh}>
       <View style={styles.scheduleToolbar}>
         <View style={styles.monthLabel}><Text style={styles.monthText}>{selectedDate.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}</Text></View>
         <MotionPressable accessibilityRole="button" onPress={() => setMode('cycle')} style={styles.addPlanButton}><Ionicons accessible={false} name="add" size={17} color={ui.colors.accentStrong} /><Text style={styles.addLink}>{language === 'vi' ? 'Kế hoạch' : 'Plan'}</Text></MotionPressable>
@@ -123,7 +125,7 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   projectAvatar: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.accentSoft },
   projectAvatarText: { color: ui.colors.accentStrong, fontSize: 12, fontWeight: '700' },
   projectName: { flex: 1, color: ui.colors.text, ...ui.typography.bodyStrong, fontSize: 15 },
-  scheduleToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  scheduleToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 12 },
   monthLabel: { minHeight: 44, justifyContent: 'center' },
   monthText: { color: ui.colors.text, ...ui.typography.heading, textTransform: 'capitalize' },
   addPlanButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, borderRadius: 14, backgroundColor: ui.colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: ui.colors.border },

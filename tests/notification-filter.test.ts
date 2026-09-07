@@ -11,8 +11,10 @@ describe('notification filters', () => {
 
   it('recognizes assigned, mention, alert and AI categories', () => {
     expect(matchesNotificationFilter('ASSIGNED', notification('ISSUE_ASSIGNED'))).toBe(true);
-    expect(matchesNotificationFilter('MENTIONS', notification('COMMENT_MENTION'))).toBe(true);
-    expect(matchesNotificationFilter('ALERTS', notification('PROJECT_AT_RISK'))).toBe(true);
+    expect(matchesNotificationFilter('ASSIGNED', notification('ISSUE_PARTICIPANT_ADDED'))).toBe(true);
+    expect(matchesNotificationFilter('MENTIONS', notification('ISSUE_MENTIONED'))).toBe(true);
+    expect(matchesNotificationFilter('ALERTS', notification('MILESTONE_AT_RISK'))).toBe(true);
+    expect(matchesNotificationFilter('ALERTS', notification('CI_FAILED'))).toBe(true);
     expect(matchesNotificationFilter('AI', notification('AI_ACTION_READY'))).toBe(true);
   });
 

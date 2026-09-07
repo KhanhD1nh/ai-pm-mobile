@@ -26,9 +26,20 @@ export function useGlobalSearch(orgId: string | null | undefined, query: string)
     );
   }, [normalizedQuery, projects.data]);
 
+  const suggestedProjects = useMemo(
+    () => (projects.data ?? []).slice(0, 6),
+    [projects.data],
+  );
+
+  const isSearching = normalizedQuery.length >= 2 && (
+    normalizedQuery !== debouncedQuery || issues.isFetching
+  );
+
   return {
     projects: filteredProjects,
-    issues: debouncedQuery.length >= 2 ? (issues.data ?? []) : [],
+    issues: normalizedQuery === debouncedQuery && debouncedQuery.length >= 2 ? (issues.data ?? []) : [],
+    suggestedProjects,
+    isSearching,
     issueQuery: issues,
   };
 }

@@ -1,13 +1,16 @@
 import Ionicons from '@react-native-vector-icons/ionicons';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { DateTimePicker as NativeDateTimePicker } from '@expo/ui/community/datetime-picker';
 import Markdown from '@ronradtke/react-native-markdown-display';
+import Animated, { Easing, FadeIn, FadeOut, LinearTransition, ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Button, Field } from '@/shared/components/ui/primitives';
 import { BottomSheet, ChoiceRow, ListGroup, ListRow, SectionHeader } from '@/shared/components/ui/mobile';
 import { MotionPressable, SoftFade } from '@/shared/components/ui/motion';
 import { LoadingScreen, Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useAuth } from '@/providers/auth-provider';
@@ -29,12 +32,63 @@ import {
 const priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const participantRoles: ParticipantRole[] = ['ASSIGNEE', 'REVIEWER', 'NEXT_REVIEWER', 'OBSERVER'];
 const relationTypes = ['BLOCKS', 'RELATES_TO', 'DUPLICATES'] as const;
+const scheduleDurationOptions = [0.5, 1, 2, 4] as const;
+const duePickerLayoutTransition = LinearTransition
+  .springify()
+  .damping(30)
+  .stiffness(230)
+  .mass(0.8)
+  .reduceMotion(ReduceMotion.System);
+const duePickerEntering = FadeIn
+  .duration(220)
+  .easing(Easing.out(Easing.quad))
+  .reduceMotion(ReduceMotion.System);
+const duePickerExiting = FadeOut
+  .duration(180)
+  .easing(Easing.inOut(Easing.quad))
+  .reduceMotion(ReduceMotion.System);
 type Sheet = 'status' | 'priority' | 'assignee' | 'cycle' | 'milestone' | 'tags' | 'due' | 'schedule' | 'description' | 'participants' | 'relations' | null;
+type DuePickerMode = 'date' | null;
+type ScheduleQuickSelection = 'now' | 'tomorrow' | null;
+
+function roundToNextHalfHour(value = new Date()) {
+  const next = new Date(value);
+  next.setSeconds(0, 0);
+  const remainder = next.getMinutes() % 30;
+  if (remainder !== 0) next.setMinutes(next.getMinutes() + (30 - remainder));
+  return next;
+}
+
+function shiftDate(value: Date, amount: number, unit: 'day' | 'minute') {
+  const next = new Date(value);
+  if (unit === 'day') next.setDate(next.getDate() + amount);
+  else next.setMinutes(next.getMinutes() + amount);
+  return next;
+}
+
+function formatFocusHours(hours: number, language: 'vi' | 'en') {
+  if (hours === 0.5) return language === 'vi' ? '30 phút' : '30 min';
+  if (hours < 1) return language === 'vi' ? `${Math.round(hours * 60)} phút` : `${Math.round(hours * 60)} min`;
+  return language === 'vi' ? `${hours} giờ` : `${hours} hr`;
+}
+
+function mergeDatePart(current: Date, selected: Date) {
+  const next = new Date(current);
+  next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+  return next;
+}
+
+function formatLocalDateKey(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function IssueDetailScreen() {
   const { identifier } = useLocalSearchParams<{ identifier: string }>();
   const { user, orgId, selectOrganization } = useAuth();
-  const { theme: ui, language } = useAppPreferences();
+  const { theme: ui, language, resolvedTheme } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const {
     issue,
@@ -49,6 +103,7 @@ export default function IssueDetailScreen() {
     relations,
     refresh,
   } = useIssueDetailData(identifier, orgId);
+  const pullRefresh = usePullToRefresh(refresh);
 
   useEffect(() => {
     const targetOrgId = issue.data?.organization_id;
@@ -69,12 +124,31 @@ export default function IssueDetailScreen() {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [comment, setComment] = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [scheduleStart, setScheduleStart] = useState('');
-  const [scheduleHours, setScheduleHours] = useState('2');
+  const [dueAt, setDueAt] = useState<Date>(() => roundToNextHalfHour());
+  const [duePickerMode, setDuePickerMode] = useState<DuePickerMode>(null);
+  const [scheduleStart, setScheduleStart] = useState<Date>(() => roundToNextHalfHour());
+  const [scheduleHours, setScheduleHours] = useState(2);
+  const [scheduleQuickSelection, setScheduleQuickSelection] = useState<ScheduleQuickSelection>('now');
   const [relationIdentifier, setRelationIdentifier] = useState('');
   const [relationType, setRelationType] = useState<(typeof relationTypes)[number]>('RELATES_TO');
   const [participantRole, setParticipantRole] = useState<ParticipantRole>('OBSERVER');
+  const reduceMotion = useReducedMotion();
+  const dueChevronProgress = useSharedValue(0);
+  const dueChevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotateZ: `${dueChevronProgress.value * 180}deg` }],
+  }));
+
+  useEffect(() => {
+    const next = duePickerMode ? 1 : 0;
+    if (reduceMotion) {
+      dueChevronProgress.value = next;
+      return;
+    }
+    dueChevronProgress.value = withTiming(next, {
+      duration: 220,
+      easing: Easing.inOut(Easing.cubic),
+    });
+  }, [dueChevronProgress, duePickerMode, reduceMotion]);
 
   const statusName = useMemo(
     () => issue.data?.status?.name ?? statuses.data?.find((status) => status.id === issue.data?.status_id)?.name ?? '—',
@@ -99,13 +173,67 @@ export default function IssueDetailScreen() {
     setSheet('description');
   };
 
+  const openDue = () => {
+    const existingDateOnly = data.due_date ? new Date(data.due_date) : null;
+    if (existingDateOnly && !Number.isNaN(existingDateOnly.getTime())) {
+      setDueAt(existingDateOnly);
+    } else {
+      setDueAt(roundToNextHalfHour());
+    }
+    setDuePickerMode(null);
+    setSheet('due');
+  };
+
+  const openSchedule = () => {
+    const existingStart = data.scheduled_start ? new Date(data.scheduled_start) : null;
+    const existingHours = Number(data.focus_hours);
+    const hasExistingStart = Boolean(existingStart && !Number.isNaN(existingStart.getTime()));
+    setScheduleStart(hasExistingStart ? existingStart! : roundToNextHalfHour());
+    setScheduleQuickSelection(hasExistingStart ? null : 'now');
+    setScheduleHours(Number.isFinite(existingHours) && existingHours > 0 ? existingHours : 2);
+    setSheet('schedule');
+  };
+
+  const adjustScheduleStart = (amount: number, unit: 'day' | 'minute') => {
+    setScheduleQuickSelection(null);
+    setScheduleStart((current) => shiftDate(current, amount, unit));
+  };
+
+  const selectScheduleQuick = (selection: Exclude<ScheduleQuickSelection, null>) => {
+    setScheduleQuickSelection(selection);
+    setScheduleStart(selection === 'now'
+      ? roundToNextHalfHour()
+      : shiftDate(roundToNextHalfHour(), 1, 'day'));
+  };
+
+  const scheduleEnd = new Date(scheduleStart.getTime() + scheduleHours * 60 * 60 * 1000);
+  const scheduleDateLabel = scheduleStart.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const scheduleTimeLabel = scheduleStart.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const scheduleEndLabel = `${scheduleEnd.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: '2-digit' })} · ${scheduleEnd.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+  const storedDue = data.due_date ? new Date(data.due_date) : null;
+  const dueListLabel = storedDue && !Number.isNaN(storedDue.getTime())
+    ? storedDue.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })
+    : (language === 'vi' ? 'Chưa đặt' : 'None');
+  const dueDateLabel = dueAt.toLocaleDateString(locale, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const duePickerValueLabel = dueAt.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+  const duePickerLocale = language === 'vi' ? 'vi_VN' : 'en_US';
+
+  const applyDueSelection = (selected: Date) => {
+    setDueAt((current) => mergeDatePart(current, selected));
+    // Keep the inline iOS calendar open after a selection. Collapsing the
+    // calendar at the same instant as the native selection feedback makes the
+    // interaction feel abrupt. Android remains dialog-based and closes after
+    // confirmation as expected.
+    if (Platform.OS === 'android') setDuePickerMode(null);
+  };
+
   return (
     <Screen
       chrome="stack"
       title={language === 'vi' ? 'Chi tiết công việc' : 'Task detail'}
       subtitle={data.identifier}
-      refreshing={issue.isRefetching}
-      onRefresh={() => void refresh()}
+      refreshing={pullRefresh.refreshing}
+      onRefresh={pullRefresh.onRefresh}
     >
       <SoftFade style={styles.hero}>
         <Text style={styles.identifier}>{data.identifier}</Text>
@@ -135,7 +263,7 @@ export default function IssueDetailScreen() {
       <SectionHeader title={language === 'vi' ? 'Chi tiết' : 'Details'} />
       <ListGroup variant="plain">
         <ListRow first icon="people-outline" label={language === 'vi' ? 'Người phụ trách' : 'Assignee'} value={assigneeName} onPress={() => setSheet('assignee')} />
-        <ListRow icon="calendar-outline" label={language === 'vi' ? 'Hạn hoàn thành' : 'Due date'} value={data.due_date ? new Date(data.due_date).toLocaleDateString(locale) : (language === 'vi' ? 'Chưa đặt' : 'None')} onPress={() => setSheet('due')} />
+        <ListRow icon="calendar-outline" label={language === 'vi' ? 'Hạn hoàn thành' : 'Due date'} value={dueListLabel} onPress={openDue} />
       </ListGroup>
 
       <SectionHeader title={language === 'vi' ? 'Bình luận' : 'Comments'} caption={`${comments.data?.length ?? 0}`} />
@@ -167,7 +295,7 @@ export default function IssueDetailScreen() {
         <ListRow first icon="repeat-outline" label="Cycle" value={cycleName} onPress={() => setSheet('cycle')} />
         <ListRow icon="trophy-outline" label="Milestone" value={milestoneName} onPress={() => setSheet('milestone')} />
         <ListRow icon="pricetags-outline" label="Tags" value={tagLabel} onPress={() => setSheet('tags')} />
-        <ListRow icon="time-outline" label={language === 'vi' ? 'Lịch tập trung' : 'Focus schedule'} value={data.scheduled_start ? `${new Date(data.scheduled_start).toLocaleString(locale)} · ${Number(data.focus_hours ?? 0)}h` : (language === 'vi' ? 'Chưa xếp' : 'Not scheduled')} onPress={() => setSheet('schedule')} />
+        <ListRow icon="time-outline" label={language === 'vi' ? 'Lịch tập trung' : 'Focus schedule'} value={data.scheduled_start ? `${new Date(data.scheduled_start).toLocaleString(locale)} · ${formatFocusHours(Number(data.focus_hours ?? 0), language)}` : (language === 'vi' ? 'Chưa xếp' : 'Not scheduled')} onPress={openSchedule} />
       </ListGroup>
 
       <SectionHeader title={language === 'vi' ? 'Thêm' : 'More'} />
@@ -211,13 +339,242 @@ export default function IssueDetailScreen() {
         }} />)}
       </BottomSheet>
 
-      <BottomSheet visible={sheet === 'due'} title={language === 'vi' ? 'Hạn hoàn thành' : 'Due date'} onClose={() => setSheet(null)} footer={<View style={styles.sheetButtons}><Button kind="secondary" title={language === 'vi' ? 'Xóa hạn' : 'Clear'} onPress={() => update.mutate({ dueDate: null }, { onSuccess: () => setSheet(null), onError: mutationError })} /><Button title={language === 'vi' ? 'Lưu' : 'Save'} disabled={!dueDate} onPress={() => update.mutate({ dueDate }, { onSuccess: () => setSheet(null), onError: mutationError })} /></View>}>
-        <Field placeholder="YYYY-MM-DD" value={dueDate} onChangeText={setDueDate} />
+      <BottomSheet
+        visible={sheet === 'due'}
+        title={language === 'vi' ? 'Hạn hoàn thành' : 'Due date'}
+        subtitle={language === 'vi' ? 'Chọn ngày công việc cần hoàn tất.' : 'Choose the date this task should be completed.'}
+        onClose={() => { setDuePickerMode(null); setSheet(null); }}
+        footer={(
+          <View style={styles.dueFooter}>
+            <Button
+              title={language === 'vi' ? 'Lưu hạn hoàn thành' : 'Save due date'}
+              disabled={update.isPending}
+              onPress={() => update.mutate(
+                { dueDate: formatLocalDateKey(dueAt) },
+                { onSuccess: () => { setDuePickerMode(null); setSheet(null); }, onError: mutationError },
+              )}
+            />
+            {data.due_date ? (
+              <MotionPressable
+                accessibilityRole="button"
+                accessibilityLabel={language === 'vi' ? 'Xóa hạn hoàn thành' : 'Clear due date'}
+                disabled={update.isPending}
+                onPress={() => update.mutate(
+                  { dueDate: null },
+                  { onSuccess: () => { setDuePickerMode(null); setSheet(null); }, onError: mutationError },
+                )}
+                style={styles.dueClearButton}
+              >
+                <Text style={styles.dueClearText}>{language === 'vi' ? 'Xóa hạn hoàn thành' : 'Clear due date'}</Text>
+              </MotionPressable>
+            ) : null}
+          </View>
+        )}
+      >
+        <View style={styles.dueSummary}>
+          <View style={styles.dueSummaryIcon}>
+            <Ionicons name="calendar-outline" size={20} color={ui.colors.accentStrong} />
+          </View>
+          <View style={styles.dueSummaryCopy}>
+            <Text style={styles.dueSummaryEyebrow}>{language === 'vi' ? 'SẼ ĐẾN HẠN' : 'DUE'}</Text>
+            <Text style={styles.dueSummaryDate}>{dueDateLabel}</Text>
+          </View>
+        </View>
+
+        <Animated.View layout={duePickerLayoutTransition} style={styles.duePickerGroup}>
+          <View style={styles.duePickerRow}>
+            <View style={styles.duePickerLabelGroup}>
+              <View style={styles.dueRowIcon}><Ionicons name="calendar-outline" size={17} color={ui.colors.textSecondary} /></View>
+              <Text style={styles.duePickerLabel}>{language === 'vi' ? 'Ngày' : 'Date'}</Text>
+            </View>
+            <MotionPressable
+              accessibilityRole="button"
+              accessibilityLabel={`${language === 'vi' ? 'Chọn ngày' : 'Choose date'}, ${duePickerValueLabel}`}
+              onPress={() => setDuePickerMode((current) => current ? null : 'date')}
+              style={styles.duePickerValueButton}
+            >
+              <Text style={styles.duePickerValue}>{duePickerValueLabel}</Text>
+              <Animated.View style={dueChevronStyle}>
+                <Ionicons name="chevron-down" size={16} color={ui.colors.textMuted} />
+              </Animated.View>
+            </MotionPressable>
+          </View>
+
+          {Platform.OS === 'ios' && duePickerMode ? (
+            <Animated.View
+              entering={duePickerEntering}
+              exiting={duePickerExiting}
+              layout={duePickerLayoutTransition}
+              style={styles.dueInlinePickerWrap}
+            >
+              <NativeDateTimePicker
+                value={dueAt}
+                mode="date"
+                display="inline"
+                locale={duePickerLocale}
+                themeVariant={resolvedTheme}
+                accentColor={ui.colors.accentStrong}
+                onValueChange={(_, selected) => applyDueSelection(selected)}
+                style={styles.dueInlinePicker}
+              />
+            </Animated.View>
+          ) : null}
+
+        </Animated.View>
+
+        <Animated.View layout={duePickerLayoutTransition} style={styles.dueQuickActions}>
+          <MotionPressable
+            accessibilityRole="button"
+            onPress={() => {
+              const next = new Date();
+              setDueAt(next);
+              setDuePickerMode(null);
+            }}
+            style={styles.dueQuickAction}
+          >
+            <Text style={styles.dueQuickText}>{language === 'vi' ? 'Hôm nay' : 'Today'}</Text>
+          </MotionPressable>
+          <MotionPressable
+            accessibilityRole="button"
+            onPress={() => {
+              const next = new Date();
+              next.setDate(next.getDate() + 1);
+              setDueAt(next);
+              setDuePickerMode(null);
+            }}
+            style={styles.dueQuickAction}
+          >
+            <Text style={styles.dueQuickText}>{language === 'vi' ? 'Ngày mai' : 'Tomorrow'}</Text>
+          </MotionPressable>
+        </Animated.View>
+
+        {Platform.OS === 'android' && duePickerMode ? (
+          <NativeDateTimePicker
+            value={dueAt}
+            mode={duePickerMode}
+            presentation="dialog"
+            display="default"
+            is24Hour
+            accentColor={ui.colors.accentStrong}
+            positiveButton={{ label: language === 'vi' ? 'Chọn' : 'Select' }}
+            negativeButton={{ label: language === 'vi' ? 'Hủy' : 'Cancel' }}
+            onValueChange={(_, selected) => applyDueSelection(selected)}
+            onDismiss={() => setDuePickerMode(null)}
+          />
+        ) : null}
       </BottomSheet>
 
-      <BottomSheet visible={sheet === 'schedule'} title={language === 'vi' ? 'Lịch tập trung' : 'Focus schedule'} onClose={() => setSheet(null)} footer={<Button title={language === 'vi' ? 'Xếp lịch' : 'Schedule'} disabled={!scheduleStart || Number(scheduleHours) <= 0 || schedule.isPending} onPress={() => schedule.mutate({ startsAt: new Date(scheduleStart).toISOString(), durationHours: Number(scheduleHours) }, { onSuccess: () => { setScheduleStart(''); setSheet(null); }, onError: mutationError })} />}>
-        <Field placeholder="2026-09-04T14:00:00+07:00" autoCapitalize="none" value={scheduleStart} onChangeText={setScheduleStart} />
-        <Field placeholder={language === 'vi' ? 'Số giờ tập trung' : 'Focus hours'} keyboardType="decimal-pad" value={scheduleHours} onChangeText={setScheduleHours} />
+      <BottomSheet
+        visible={sheet === 'schedule'}
+        title={language === 'vi' ? 'Xếp lịch công việc' : 'Schedule task'}
+        subtitle={language === 'vi' ? 'Chọn thời gian bắt đầu và thời lượng tập trung.' : 'Choose when to start and how long to focus.'}
+        onClose={() => setSheet(null)}
+        footer={(
+          <Button
+            title={language === 'vi' ? 'Xếp lịch' : 'Schedule'}
+            disabled={scheduleHours <= 0 || schedule.isPending}
+            onPress={() => schedule.mutate(
+              { startsAt: scheduleStart.toISOString(), durationHours: scheduleHours },
+              { onSuccess: () => setSheet(null), onError: mutationError },
+            )}
+          />
+        )}
+      >
+        <View style={styles.scheduleSection}>
+          <Text style={styles.scheduleLabel}>{language === 'vi' ? 'Bắt đầu' : 'Start'}</Text>
+          <View style={styles.schedulePickerRow}>
+            <View style={styles.schedulePickerCard}>
+              <View style={styles.schedulePickerHeading}>
+                <Ionicons name="calendar-outline" size={17} color={ui.colors.textMuted} />
+                <Text style={styles.schedulePickerCaption}>{language === 'vi' ? 'Ngày' : 'Date'}</Text>
+              </View>
+              <Text style={styles.schedulePickerValue}>{scheduleDateLabel}</Text>
+              <View style={styles.scheduleStepper}>
+                <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Ngày trước' : 'Previous day'} onPress={() => adjustScheduleStart(-1, 'day')} style={styles.scheduleStepButton}>
+                  <Ionicons name="chevron-back" size={18} color={ui.colors.text} />
+                </MotionPressable>
+                <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Ngày sau' : 'Next day'} onPress={() => adjustScheduleStart(1, 'day')} style={styles.scheduleStepButton}>
+                  <Ionicons name="chevron-forward" size={18} color={ui.colors.text} />
+                </MotionPressable>
+              </View>
+            </View>
+
+            <View style={styles.schedulePickerCard}>
+              <View style={styles.schedulePickerHeading}>
+                <Ionicons name="time-outline" size={17} color={ui.colors.textMuted} />
+                <Text style={styles.schedulePickerCaption}>{language === 'vi' ? 'Giờ' : 'Time'}</Text>
+              </View>
+              <Text style={styles.schedulePickerValue}>{scheduleTimeLabel}</Text>
+              <View style={styles.scheduleStepper}>
+                <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Lùi 30 phút' : '30 minutes earlier'} onPress={() => adjustScheduleStart(-30, 'minute')} style={styles.scheduleStepButton}>
+                  <Ionicons name="remove" size={19} color={ui.colors.text} />
+                </MotionPressable>
+                <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Thêm 30 phút' : '30 minutes later'} onPress={() => adjustScheduleStart(30, 'minute')} style={styles.scheduleStepButton}>
+                  <Ionicons name="add" size={19} color={ui.colors.text} />
+                </MotionPressable>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.scheduleQuickRow}>
+            <MotionPressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: scheduleQuickSelection === 'now' }}
+              onPress={() => selectScheduleQuick('now')}
+              style={[styles.scheduleQuickButton, scheduleQuickSelection === 'now' && styles.scheduleQuickButtonActive]}
+            >
+              <Text style={[styles.scheduleQuickText, scheduleQuickSelection === 'now' && styles.scheduleQuickTextActive]}>{language === 'vi' ? 'Bây giờ' : 'Now'}</Text>
+            </MotionPressable>
+            <MotionPressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: scheduleQuickSelection === 'tomorrow' }}
+              onPress={() => selectScheduleQuick('tomorrow')}
+              style={[styles.scheduleQuickButton, scheduleQuickSelection === 'tomorrow' && styles.scheduleQuickButtonActive]}
+            >
+              <Text style={[styles.scheduleQuickText, scheduleQuickSelection === 'tomorrow' && styles.scheduleQuickTextActive]}>{language === 'vi' ? 'Ngày mai' : 'Tomorrow'}</Text>
+            </MotionPressable>
+          </View>
+        </View>
+
+        <View style={styles.scheduleSection}>
+          <Text style={styles.scheduleLabel}>{language === 'vi' ? 'Thời lượng' : 'Duration'}</Text>
+          <View style={styles.scheduleDurationOptions}>
+            {scheduleDurationOptions.map((hours) => {
+              const active = scheduleHours === hours;
+              return (
+                <MotionPressable
+                  key={hours}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setScheduleHours(hours)}
+                  style={[styles.scheduleDurationChip, active && styles.scheduleDurationChipActive]}
+                >
+                  <Text style={[styles.scheduleDurationText, active && styles.scheduleDurationTextActive]}>{formatFocusHours(hours, language)}</Text>
+                </MotionPressable>
+              );
+            })}
+          </View>
+          <View style={styles.scheduleDurationAdjuster}>
+            <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Giảm thời lượng 30 phút' : 'Reduce duration by 30 minutes'} disabled={scheduleHours <= 0.5} onPress={() => setScheduleHours((hours) => Math.max(0.5, hours - 0.5))} style={[styles.scheduleAdjustButton, scheduleHours <= 0.5 && styles.scheduleAdjustButtonDisabled]}>
+              <Ionicons name="remove" size={20} color={ui.colors.text} />
+            </MotionPressable>
+            <View style={styles.scheduleDurationValue}>
+              <Text style={styles.scheduleDurationValueLabel}>{language === 'vi' ? 'Tùy chỉnh' : 'Custom'}</Text>
+              <Text style={styles.scheduleDurationValueText}>{formatFocusHours(scheduleHours, language)}</Text>
+            </View>
+            <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Tăng thời lượng 30 phút' : 'Increase duration by 30 minutes'} onPress={() => setScheduleHours((hours) => hours + 0.5)} style={styles.scheduleAdjustButton}>
+              <Ionicons name="add" size={20} color={ui.colors.text} />
+            </MotionPressable>
+          </View>
+        </View>
+
+        <View style={styles.scheduleSummary}>
+          <View style={styles.scheduleSummaryIcon}><Ionicons name="checkmark" size={18} color={ui.colors.accentStrong} /></View>
+          <View style={styles.scheduleSummaryCopy}>
+            <Text style={styles.scheduleSummaryLabel}>{language === 'vi' ? 'Kết thúc' : 'Ends'}</Text>
+            <Text style={styles.scheduleSummaryValue}>{scheduleEndLabel}</Text>
+          </View>
+        </View>
       </BottomSheet>
 
       <BottomSheet visible={sheet === 'description'} title={language === 'vi' ? 'Sửa mô tả' : 'Edit description'} onClose={() => setSheet(null)} footer={<Button title={language === 'vi' ? 'Lưu mô tả' : 'Save description'} onPress={() => update.mutate({ description }, { onSuccess: () => setSheet(null), onError: mutationError })} />}>
@@ -283,6 +640,56 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   sendButton: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.accentStrong },
   sendDisabled: { opacity: 0.4 },
   sheetButtons: { flexDirection: 'row', gap: 8 },
+  dueFooter: { gap: 4 },
+  dueClearButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: ui.radius.sm },
+  dueClearText: { color: ui.colors.danger, ...ui.typography.bodyStrong, fontSize: 14 },
+  dueSummary: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 6 },
+  dueSummaryIcon: { width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.accentSoft },
+  dueSummaryCopy: { flex: 1, minWidth: 0 },
+  dueSummaryEyebrow: { color: ui.colors.textMuted, ...ui.typography.eyebrow, marginBottom: 3 },
+  dueSummaryDate: { color: ui.colors.text, ...ui.typography.heading, fontSize: 16 },
+  duePickerGroup: { overflow: 'hidden', borderRadius: ui.radius.lg, backgroundColor: ui.colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: ui.colors.border },
+  duePickerRow: { minHeight: 62, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingHorizontal: 13 },
+  duePickerLabelGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dueRowIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.surfaceRaised },
+  duePickerLabel: { color: ui.colors.text, ...ui.typography.bodyStrong },
+  duePickerValueButton: { minHeight: Platform.OS === 'android' ? 48 : 44, flexShrink: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingLeft: 12 },
+  duePickerValue: { color: ui.colors.accentStrong, ...ui.typography.bodyStrong },
+  dueInlinePickerWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border, paddingHorizontal: 8, paddingBottom: 8 },
+  dueInlinePicker: { alignSelf: 'stretch' },
+  dueQuickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
+  dueQuickAction: { minHeight: Platform.OS === 'android' ? 48 : 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised },
+  dueQuickText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
+  scheduleSection: { gap: 10 },
+  scheduleLabel: { color: ui.colors.text, ...ui.typography.bodyStrong },
+  schedulePickerRow: { flexDirection: 'row', gap: 10 },
+  schedulePickerCard: { flex: 1, minWidth: 0, gap: 8, padding: 12, borderRadius: ui.radius.md, backgroundColor: ui.colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: ui.colors.border },
+  schedulePickerHeading: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  schedulePickerCaption: { color: ui.colors.textMuted, ...ui.typography.caption },
+  schedulePickerValue: { color: ui.colors.text, ...ui.typography.heading, fontSize: 16 },
+  scheduleStepper: { flexDirection: 'row', gap: 8 },
+  scheduleStepButton: { minWidth: 44, minHeight: 44, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised },
+  scheduleQuickRow: { flexDirection: 'row', gap: 8 },
+  scheduleQuickButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised, borderWidth: StyleSheet.hairlineWidth, borderColor: 'transparent' },
+  scheduleQuickButtonActive: { backgroundColor: ui.colors.accentSoft, borderColor: ui.colors.accent },
+  scheduleQuickText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
+  scheduleQuickTextActive: { color: ui.colors.accentStrong },
+  scheduleDurationOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  scheduleDurationChip: { minHeight: 44, minWidth: 76, flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised, borderWidth: StyleSheet.hairlineWidth, borderColor: 'transparent' },
+  scheduleDurationChipActive: { backgroundColor: ui.colors.accentSoft, borderColor: ui.colors.accent },
+  scheduleDurationText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
+  scheduleDurationTextActive: { color: ui.colors.accentStrong },
+  scheduleDurationAdjuster: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 7, borderRadius: ui.radius.md, backgroundColor: ui.colors.surface },
+  scheduleAdjustButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised },
+  scheduleAdjustButtonDisabled: { opacity: 0.35 },
+  scheduleDurationValue: { flex: 1, alignItems: 'center' },
+  scheduleDurationValueLabel: { color: ui.colors.textMuted, ...ui.typography.caption },
+  scheduleDurationValueText: { color: ui.colors.text, ...ui.typography.bodyStrong, marginTop: 1 },
+  scheduleSummary: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 13, borderRadius: ui.radius.md, backgroundColor: ui.colors.accentSoft },
+  scheduleSummaryIcon: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: ui.colors.bgElevated },
+  scheduleSummaryCopy: { flex: 1, minWidth: 0 },
+  scheduleSummaryLabel: { color: ui.colors.textMuted, ...ui.typography.caption },
+  scheduleSummaryValue: { color: ui.colors.text, ...ui.typography.bodyStrong, marginTop: 1 },
   manageRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.colors.border },
   manageCopy: { flex: 1, minWidth: 0 },
   manageTitle: { color: ui.colors.text, ...ui.typography.bodyStrong },

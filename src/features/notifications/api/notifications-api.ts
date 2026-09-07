@@ -1,12 +1,21 @@
 import { request } from '@/infrastructure/networking/api-client';
 import type { NotificationItem } from '@/shared/contracts';
+import type { NotificationFilter } from '../model/notification-filter';
+
+export type NotificationListParams = {
+  filter?: NotificationFilter;
+  limit?: number;
+  offset?: number;
+  projectId?: string;
+};
 
 export const notificationsApi = {
-  list: (unreadOnly = false, projectId?: string) => {
+  list: ({ filter = 'ALL', limit = 40, offset = 0, projectId }: NotificationListParams = {}) => {
     const qs = new URLSearchParams();
-    if (unreadOnly) qs.set('unreadOnly', 'true');
+    qs.set('filter', filter);
     if (projectId) qs.set('projectId', projectId);
-    qs.set('limit', '100');
+    qs.set('limit', String(limit));
+    qs.set('offset', String(offset));
     return request<NotificationItem[]>(`/notifications?${qs}`);
   },
   unreadCount: () => request<{ unread: number }>('/notifications/unread-count'),

@@ -17,9 +17,14 @@ export function useMyWork(orgId?: string | null, userId?: string | null) {
   const sections = useMemo(() => {
     const issues = query.data ?? [];
     const snapshotTime = query.dataUpdatedAt || 0;
+    const snapshotDate = snapshotTime > 0 ? new Date(snapshotTime) : null;
+    const todayKey = snapshotDate
+      ? `${snapshotDate.getFullYear()}-${String(snapshotDate.getMonth() + 1).padStart(2, '0')}-${String(snapshotDate.getDate()).padStart(2, '0')}`
+      : null;
     const overdue = issues.filter((issue) =>
       Boolean(issue.due_date) &&
-      new Date(issue.due_date!).getTime() < snapshotTime &&
+      Boolean(todayKey) &&
+      issue.due_date!.slice(0, 10) < todayKey! &&
       issue.status?.category !== 'DONE',
     );
 

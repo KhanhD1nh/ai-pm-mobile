@@ -1,1 +1,1 @@
-export { default } from '@/features/search/screens/search-screen';
+export { default } from '@/features/issues/screens/issue-detail-screen';

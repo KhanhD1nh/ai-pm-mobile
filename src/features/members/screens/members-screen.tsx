@@ -7,6 +7,7 @@ import { BottomSheet, ChoiceRow, GlassIconButton, ListGroup, SectionHeader } fro
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
 import type { AppTheme } from '@/shared/components/ui/theme';
+import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useMemberSearch, useProjectMembers } from '../queries/use-members';
@@ -22,6 +23,7 @@ export default function MembersScreen() {
   const add = useAddProjectMembersBatch(projectId);
   const update = useUpdateProjectMemberRole(projectId);
   const remove = useRemoveProjectMember(projectId);
+  const pullRefresh = usePullToRefresh(() => members.refetch());
   const [open, setOpen] = useState(false);
   const [roleSheet, setRoleSheet] = useState<{ id: string; name: string; role: string } | null>(null);
   const [query, setQuery] = useState('');
@@ -47,8 +49,8 @@ export default function MembersScreen() {
       chrome="stack"
       title={language === 'vi' ? 'Thành viên' : 'Members'}
       subtitle={`${project.data?.key ?? ''} · ${members.data?.length ?? 0}`}
-      refreshing={members.isRefetching}
-      onRefresh={() => void members.refetch()}
+      refreshing={pullRefresh.refreshing}
+      onRefresh={pullRefresh.onRefresh}
       right={<GlassIconButton icon="person-add-outline" label={language === 'vi' ? 'Thêm người' : 'Add member'} onPress={() => setOpen(true)} />}
     >
       <SectionHeader title={language === 'vi' ? 'Nhóm dự án' : 'Project team'} />
