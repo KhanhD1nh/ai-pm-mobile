@@ -39,6 +39,10 @@ export default function TelegramAdminScreen() {
   const toggleEnabled = (enabled: boolean) => update.mutate({ enabled }, { onError: (error) => presentError(vi ? 'Không thể cập nhật Telegram bot' : 'Could not update Telegram bot', error) });
   const testBot = () => test.mutate(token.trim() || undefined, { onSuccess: (result) => Alert.alert(result.ok ? (vi ? 'Kết nối thành công' : 'Connection successful') : (vi ? 'Kết nối thất bại' : 'Connection failed'), result.bot?.username ? `@${result.bot.username}` : result.error), onError: (error) => presentError(vi ? 'Không thể test bot' : 'Could not test bot', error) });
   const saveWebhook = () => register.mutate(webhookUrl.trim() || undefined, { onSuccess: (result) => Alert.alert(result.ok ? (vi ? 'Webhook đã đăng ký' : 'Webhook registered') : (vi ? 'Webhook thất bại' : 'Webhook failed'), result.url || result.description || result.error), onError: (error) => presentError(vi ? 'Không thể đăng ký webhook' : 'Could not register webhook', error) });
+  const webhookUnavailable = webhook.data?.ok === false;
+  const webhookUnavailableDetail = webhook.data?.error === 'No Telegram bot token configured'
+    ? (vi ? 'Hãy lưu Bot token trước khi đăng ký webhook.' : 'Save a bot token before registering the webhook.')
+    : webhook.data?.error;
 
   return (
     <Screen chrome="stack" title="Telegram Bot" subtitle={vi ? 'Quản trị hệ thống' : 'System administration'} refreshing={settings.isRefetching || webhook.isRefetching} onRefresh={() => { void settings.refetch(); void webhook.refetch(); }}>
@@ -58,13 +62,14 @@ export default function TelegramAdminScreen() {
 
       <SectionHeader title="Webhook" caption={webhook.data?.url || (vi ? 'Telegram gửi update tới URL này.' : 'Telegram sends updates to this URL.')} />
       <ListGroup>
-        <ListRow first icon="cloud-done-outline" label={vi ? 'Cập nhật đang chờ' : 'Pending updates'} value={String(webhook.data?.pendingUpdateCount ?? 0)} />
+        {!webhookUnavailable ? <ListRow first icon="cloud-done-outline" label={vi ? 'Cập nhật đang chờ' : 'Pending updates'} value={String(webhook.data?.pendingUpdateCount ?? 0)} /> : null}
         {webhook.data?.lastErrorMessage ? <ListRow icon="warning-outline" label={vi ? 'Lỗi gần nhất' : 'Last error'} detail={webhook.data.lastErrorMessage} danger /> : null}
+        {webhookUnavailable ? <ListRow first icon="information-circle-outline" label={vi ? 'Webhook chưa sẵn sàng' : 'Webhook not ready'} detail={webhookUnavailableDetail} /> : null}
         {webhook.isError ? <ListRow icon="warning-outline" label={vi ? 'Không đọc được trạng thái webhook' : 'Could not read webhook status'} detail={vi ? 'Bot có thể chưa được cấu hình hoặc Telegram API đang lỗi.' : 'The bot may be unconfigured or the Telegram API may be unavailable.'} danger onPress={() => void webhook.refetch()} /> : null}
       </ListGroup>
       <View style={{ gap: 10 }}>
         <Field autoCapitalize="none" keyboardType="url" placeholder={webhook.data?.url || (vi ? 'Webhook URL (để trống dùng mặc định)' : 'Webhook URL (empty uses default)')} value={webhookUrl} onChangeText={setWebhookUrl} />
-        <Button title={register.isPending ? '…' : (vi ? 'Đăng ký webhook' : 'Register webhook')} disabled={register.isPending} onPress={saveWebhook} />
+        <Button title={register.isPending ? '…' : (vi ? 'Đăng ký webhook' : 'Register webhook')} disabled={register.isPending || !settings.data?.hasToken} onPress={saveWebhook} />
       </View>
     </Screen>
   );

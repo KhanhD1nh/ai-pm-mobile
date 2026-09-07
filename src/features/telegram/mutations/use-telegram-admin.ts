@@ -4,7 +4,13 @@ import { telegramKeys } from '../query-keys';
 
 export function useUpdateTelegramAdmin() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: telegramApi.updateAdminSettings, onSuccess: (data) => qc.setQueryData(telegramKeys.admin(), data) });
+  return useMutation({
+    mutationFn: telegramApi.updateAdminSettings,
+    onSuccess: (data) => {
+      qc.setQueryData(telegramKeys.admin(), data);
+      void qc.invalidateQueries({ queryKey: telegramKeys.webhook() });
+    },
+  });
 }
 
 export function useTestTelegramBot() {
