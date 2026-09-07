@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { issuesApi, issueKeys } from '@/features/issues/public';
+import { issuesApi } from '@/features/issues/public';
 import { projectsApi, projectKeys } from '@/features/projects/public';
 import { planningApi } from '../api/planning-api';
 import { planningKeys } from '../query-keys';
@@ -22,17 +21,12 @@ export function usePlanning(projectId?: string | null) {
     enabled: !!projectId,
   });
   const issues = useQuery({
-    queryKey: issueKeys.project(projectId),
-    queryFn: () => issuesApi.list({ projectId: projectId!, limit: 200 }),
+    queryKey: planningKeys.schedule(projectId),
+    queryFn: () => issuesApi.calendar(projectId!),
     enabled: !!projectId,
   });
 
-  const scheduled = useMemo(
-    () => (issues.data ?? [])
-      .filter((issue) => issue.scheduled_start)
-      .sort((a, b) => new Date(a.scheduled_start!).getTime() - new Date(b.scheduled_start!).getTime()),
-    [issues.data],
-  );
+  const scheduled = issues.data ?? [];
 
   return {
     project,
@@ -45,4 +39,12 @@ export function usePlanning(projectId?: string | null) {
       await Promise.all([cycles.refetch(), milestones.refetch(), issues.refetch()]);
     },
   };
+}
+
+export function useProjectCycles(projectId?: string | null) {
+  return useQuery({
+    queryKey: planningKeys.cycles(projectId),
+    queryFn: () => planningApi.cycles(projectId!),
+    enabled: !!projectId,
+  });
 }

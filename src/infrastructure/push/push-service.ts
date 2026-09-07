@@ -1,21 +1,31 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { env } from '@/config/env';
 import { pushApi } from '@/infrastructure/push/push-api';
 import { request } from '@/infrastructure/networking/api-client';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: true,
-  }),
-});
+function assertRemotePushAvailable() {
+  if (Platform.OS === 'web') throw new Error('Push notifications chưa được hỗ trợ trên web');
+  if (Constants.appOwnership === 'expo') throw new Error('Push notifications cần development build; Expo Go không hỗ trợ remote notifications trên Android');
+}
 
+async function getNotifications() {
+  assertRemotePushAvailable();
+  // Expo Go throws while evaluating expo-notifications on Android; load only after the runtime guard.
+  const Notifications = await import('expo-notifications');
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: true,
+    }),
+  });
+  return Notifications;
+}
 export async function registerForPushNotifications() {
+  const Notifications = await getNotifications();
   if (!Device.isDevice) throw new Error('Push notifications cần thiết bị thật');
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -41,7 +51,10 @@ export async function registerForPushNotifications() {
 }
 
 export async function syncAppBadge() {
+  if (Platform.OS === 'web' || Constants.appOwnership === 'expo') return;
+
   try {
+    const Notifications = await getNotifications();
     const { unread } = await request<{ unread: number }>('/notifications/unread-count');
     await Notifications.setBadgeCountAsync(unread);
   } catch {

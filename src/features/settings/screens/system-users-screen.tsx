@@ -1,7 +1,12 @@
-import { useState } from 'react';
-import { Alert, Modal, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, Field, Muted, Pill } from '@/shared/components/ui/primitives';
+import Ionicons from '@react-native-vector-icons/ionicons';
+import { useMemo, useState } from 'react';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
+import { Button, Field, Pill } from '@/shared/components/ui/primitives';
+import { BottomSheet, GlassIconButton, SectionHeader } from '@/shared/components/ui/mobile';
+import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
+import type { AppTheme } from '@/shared/components/ui/theme';
+import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useAuth } from '@/providers/auth-provider';
 import { useSystemUsers } from '../queries/use-system-users';
@@ -9,6 +14,8 @@ import { useCreateSystemUser, useDeleteSystemUser } from '../mutations/use-syste
 
 export default function SystemUsersScreen() {
   const { user, orgId } = useAuth();
+  const { theme: ui, language } = useAppPreferences();
+  const styles = useMemo(() => createStyles(ui), [ui]);
   const isOwner = Boolean(user?.isSystemOwner || user?.is_system_owner);
   const users = useSystemUsers(isOwner);
   const create = useCreateSystemUser();
@@ -17,74 +24,51 @@ export default function SystemUsersScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const onError = (error: unknown) => presentError('Không thể cập nhật user', error);
+  const onError = (error: unknown) => presentError(language === 'vi' ? 'Không thể cập nhật user' : 'Could not update user', error);
 
-  if (!isOwner) return <Screen title="System Users"><Muted>Chỉ System Owner có quyền truy cập.</Muted></Screen>;
-
-  const submit = () => create.mutate(
-    { name: name.trim(), email: email.trim(), password, orgId: orgId ?? undefined, role: 'MEMBER' },
-    {
-      onSuccess: () => {
-        setOpen(false);
-        setName('');
-        setEmail('');
-        setPassword('');
-      },
-      onError,
-    },
-  );
+  if (!isOwner) return <Screen chrome="stack" title="System Users"><Text style={{ color: ui.colors.textSecondary }}>{language === 'vi' ? 'Chỉ System Owner có quyền truy cập.' : 'Only System Owners can access this screen.'}</Text></Screen>;
+  const submit = () => create.mutate({ name: name.trim(), email: email.trim(), password, orgId: orgId ?? undefined, role: 'MEMBER' }, { onSuccess: () => { setOpen(false); setName(''); setEmail(''); setPassword(''); }, onError });
 
   return (
-    <Screen
-      title="System Users"
-      subtitle={`${users.data?.length ?? 0} users`}
-      right={<Button title="+ User" onPress={() => setOpen(true)} />}
-      refreshing={users.isRefetching}
-      onRefresh={() => void users.refetch()}
-    >
-      {(users.data ?? []).map((item) => (
-        <Card key={item.id}>
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}><Text style={styles.title}>{item.name}</Text><Muted>{item.email}</Muted></View>
-            {item.isSystemOwner ? <Pill text="SYSTEM OWNER" /> : null}
+    <Screen chrome="stack" title="System Users" subtitle={`${users.data?.length ?? 0} users`} scroll={false} right={<GlassIconButton icon="person-add-outline" label={language === 'vi' ? 'Tạo user' : 'New user'} onPress={() => setOpen(true)} />}>
+      <FlatList
+        data={users.data ?? []}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        refreshing={users.isRefetching}
+        onRefresh={() => void users.refetch()}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={<SectionHeader title={language === 'vi' ? 'Tài khoản hệ thống' : 'System accounts'} />}
+        ItemSeparatorComponent={() => <View style={styles.border} />}
+        renderItem={({ item }) => (
+          <View style={styles.userRow}>
+            <View style={styles.avatar}><Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text></View>
+            <View style={styles.copy}><View style={styles.titleRow}><Text style={styles.name}>{item.name}</Text>{item.isSystemOwner ? <Pill text="OWNER" tone="accent" /> : null}</View><Text style={styles.email}>{item.email}</Text>{(item.workspaces ?? []).length ? <Text style={styles.workspaces} numberOfLines={1}>{(item.workspaces ?? []).map((workspace) => `${workspace.orgName} · ${workspace.role}`).join('  •  ')}</Text> : null}</View>
+            {!item.isSystemOwner ? <MotionPressable onPress={() => Alert.alert(language === 'vi' ? 'Xóa user?' : 'Delete user?', item.email, [{ text: language === 'vi' ? 'Hủy' : 'Cancel' }, { text: language === 'vi' ? 'Xóa' : 'Delete', style: 'destructive', onPress: () => remove.mutate(item.id, { onError }) }])} style={styles.deleteButton}><Ionicons name="trash-outline" size={17} color={ui.colors.danger} /></MotionPressable> : null}
           </View>
-          <View style={styles.workspaces}>
-            {(item.workspaces ?? []).map((workspace) => <Pill key={`${item.id}-${workspace.orgId}`} text={`${workspace.orgName} · ${workspace.role}`} />)}
-          </View>
-          {!item.isSystemOwner ? (
-            <Button
-              kind="danger"
-              title="Xóa user"
-              onPress={() => Alert.alert('Xóa user?', item.email, [
-                { text: 'Hủy' },
-                { text: 'Xóa', style: 'destructive', onPress: () => remove.mutate(item.id, { onError }) },
-              ])}
-            />
-          ) : null}
-        </Card>
-      ))}
+        )}
+      />
 
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Tạo System User</Text>
-            <Field placeholder="Tên" value={name} onChangeText={setName} />
-            <Field placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-            <Field placeholder="Mật khẩu" secureTextEntry value={password} onChangeText={setPassword} />
-            <Button title="Tạo" disabled={!name.trim() || !email.trim() || password.length < 8 || create.isPending} onPress={submit} />
-            <Button kind="secondary" title="Hủy" onPress={() => setOpen(false)} />
-          </View>
-        </View>
-      </Modal>
+      <BottomSheet visible={open} title={language === 'vi' ? 'Tạo System User' : 'Create System User'} onClose={() => setOpen(false)} footer={<Button title={language === 'vi' ? 'Tạo user' : 'Create user'} disabled={!name.trim() || !email.trim() || password.length < 8 || create.isPending} onPress={submit} />}>
+        <Field placeholder={language === 'vi' ? 'Tên' : 'Name'} value={name} onChangeText={setName} autoFocus />
+        <Field placeholder="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+        <Field placeholder={language === 'vi' ? 'Mật khẩu (tối thiểu 8 ký tự)' : 'Password (8+ characters)'} secureTextEntry value={password} onChangeText={setPassword} />
+      </BottomSheet>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { color: '#eef2f6', fontWeight: '900' },
-  workspaces: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0009' },
-  sheet: { backgroundColor: '#10171f', padding: 20, paddingBottom: 34, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 12 },
-  sheetTitle: { color: '#f5f7fa', fontSize: 22, fontWeight: '900' },
+const createStyles = (ui: AppTheme) => StyleSheet.create({
+  listContent: { paddingBottom: 24 },
+  userRow: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 14, paddingVertical: 11 },
+  border: { height: StyleSheet.hairlineWidth, backgroundColor: ui.colors.border },
+  avatar: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.surfaceRaised },
+  avatarText: { color: ui.colors.textSecondary, fontWeight: '700' },
+  copy: { flex: 1, minWidth: 0 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  name: { flexShrink: 1, color: ui.colors.text, ...ui.typography.bodyStrong },
+  email: { color: ui.colors.textMuted, ...ui.typography.caption, marginTop: 2 },
+  workspaces: { color: ui.colors.textMuted, ...ui.typography.caption, fontSize: 12, marginTop: 4 },
+  deleteButton: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.dangerSoft },
 });
+

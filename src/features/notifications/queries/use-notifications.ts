@@ -2,16 +2,18 @@ import { useQuery } from '@tanstack/react-query';
 import { notificationsApi } from '../api/notifications-api';
 import { notificationKeys } from '../query-keys';
 
-export function useNotifications(unreadOnly = false) {
+export function useNotifications(orgId?: string | null, unreadOnly = false) {
   return useQuery({
-    queryKey: notificationKeys.list(),
+    queryKey: notificationKeys.list(orgId, unreadOnly),
     queryFn: () => notificationsApi.list(unreadOnly),
+    enabled: !!orgId,
   });
 }
 
-export function useUnreadNotificationCount() {
+export function useUnreadNotificationCount(orgId?: string | null) {
   return useQuery({
-    queryKey: notificationKeys.unread(),
+    queryKey: notificationKeys.unread(orgId),
     queryFn: notificationsApi.unreadCount,
+    enabled: !!orgId,
   });
 }

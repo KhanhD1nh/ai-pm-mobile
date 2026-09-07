@@ -1,6 +1,10 @@
 import { request } from '@/infrastructure/networking/api-client';
 import type { Issue, IssueComment, IssueParticipant, IssueRelation } from '@/shared/contracts';
 
+export type ScheduledIssue = Pick<Issue, 'id' | 'identifier' | 'title' | 'priority' | 'scheduled_start' | 'scheduled_end' | 'focus_hours'> & {
+  status?: string | null;
+};
+
 export const issuesApi = {
   list: (params: Record<string, string | number | undefined>) => {
     const qs = new URLSearchParams();
@@ -9,6 +13,7 @@ export const issuesApi = {
     });
     return request<Issue[]>(`/issues?${qs}`);
   },
+  calendar: (projectId: string) => request<ScheduledIssue[]>(`/issues/calendar?projectId=${encodeURIComponent(projectId)}`),
   get: (identifier: string) => request<Issue>(`/issues/${identifier}`),
   create: (data: Record<string, unknown>) => request<Issue>('/issues', { method: 'POST', body: JSON.stringify(data) }),
   update: (identifier: string, data: Record<string, unknown>) => request<Issue>(`/issues/${identifier}`, { method: 'PATCH', body: JSON.stringify(data) }),

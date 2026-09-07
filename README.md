@@ -22,7 +22,7 @@ React Native / Expo SDK 57 client for AI-PM. The mobile app uses the same backen
 
 ## Requirements
 
-- Node.js compatible with Expo SDK 57
+- Node.js 22.x (the repository pins 22.23.2 in `.node-version`)
 - AI-PM backend reachable from the device
 - Expo/EAS project for real push notifications
 
@@ -38,17 +38,21 @@ EXPO_PUBLIC_EAS_PROJECT_ID=your-eas-project-id
 ## Run
 
 ```bash
-npm install
-npx expo start
+pnpm install
+pnpm run dev
+```
+
+For a physical development client over an Expo tunnel:
+
+```bash
+pnpm run dev:tunnel
 ```
 
 Validation commands used by the project:
 
 ```bash
-npx tsc --noEmit
-npx expo-doctor
-npx expo export --platform android --output-dir .dist-test
-npx expo export --platform ios --output-dir .dist-ios-test
+pnpm run verify
+pnpm run verify:release
 ```
 
 ## EAS builds
@@ -56,9 +60,9 @@ npx expo export --platform ios --output-dir .dist-ios-test
 After logging into Expo and linking the project, set `EXPO_PUBLIC_EAS_PROJECT_ID` and use the profiles in `eas.json`:
 
 ```bash
-eas build --profile development --platform android
-eas build --profile preview --platform ios
-eas build --profile production --platform all
+pnpm exec eas build --profile development --platform android
+pnpm exec eas build --profile preview --platform ios
+pnpm exec eas build --profile production --platform all
 ```
 
 Push notification receipt on a real device requires valid Expo/EAS credentials and platform push credentials. The app does not hard-code those credentials.

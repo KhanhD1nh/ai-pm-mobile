@@ -10,7 +10,7 @@ export function useProjectWiki(projectId?: string | null) {
     enabled: !!projectId,
   });
   const pages = useQuery({
-    queryKey: wikiKeys.list(project.data?.key),
+    queryKey: wikiKeys.list(projectId, project.data?.key),
     queryFn: () => wikiApi.list(project.data!.key),
     enabled: !!project.data?.key,
   });

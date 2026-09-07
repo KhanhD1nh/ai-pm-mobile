@@ -1,0 +1,64 @@
+build:
+  name: Build unsigned iPhone IPA
+  steps:
+    - eas/checkout
+
+    - eas/install_node_modules
+
+    - eas/prebuild
+
+    - run:
+        name: Install CocoaPods
+        working_directory: ./ios
+        command: pod install
+
+    - run:
+        name: Compile unsigned iPhone app
+        working_directory: ./ios
+        command: |
+          set -euo pipefail
+
+          WORKSPACE="$(find . -maxdepth 1 -name '*.xcworkspace' -print -quit)"
+          if [ -z "$WORKSPACE" ]; then
+            echo "No Xcode workspace found after prebuild"
+            exit 1
+          fi
+
+          SCHEME="$(xcodebuild -list -json -workspace "$WORKSPACE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["workspace"]["schemes"][0])')"
+          echo "Workspace: $WORKSPACE"
+          echo "Scheme: $SCHEME"
+
+          rm -rf ../build-ios ../unsigned-ipa ../AI-PM-unsigned.ipa
+
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ../build-ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            DEVELOPMENT_TEAM='' \
+            build
+
+          APP_PATH="$(find ../build-ios/Build/Products/Debug-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "Unsigned .app was not produced"
+            exit 1
+          fi
+
+          echo "App: $APP_PATH"
+          mkdir -p ../unsigned-ipa/Payload
+          cp -R "$APP_PATH" ../unsigned-ipa/Payload/
+          cd ../unsigned-ipa
+          /usr/bin/zip -qry ../AI-PM-unsigned.ipa Payload
+          /usr/bin/unzip -l ../AI-PM-unsigned.ipa
+
+    - eas/upload_artifact:
+        name: Upload unsigned IPA
+        inputs:
+          type: application-archive
+          path: AI-PM-unsigned.ipa
+

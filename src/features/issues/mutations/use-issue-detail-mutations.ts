@@ -1,31 +1,31 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { planningApi } from '@/features/planning/public';
+import { planningApi, planningKeys } from '@/features/planning/public';
 import { projectKeys } from '@/features/projects/public';
 import type { Issue } from '@/shared/contracts';
 import { issuesApi } from '../api/issues-api';
 import { issueKeys } from '../query-keys';
 
-function useIssueInvalidation(identifier?: string | null) {
+function useIssueInvalidation(identifier?: string | null, orgId?: string | null) {
   const queryClient = useQueryClient();
   return async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: issueKeys.detail(identifier) }),
+      queryClient.invalidateQueries({ queryKey: issueKeys.detail(orgId, identifier) }),
       queryClient.invalidateQueries({ queryKey: issueKeys.all }),
       queryClient.invalidateQueries({ queryKey: projectKeys.all }),
     ]);
   };
 }
 
-export function useUpdateIssue(identifier?: string | null, version?: number) {
-  const invalidate = useIssueInvalidation(identifier);
+export function useUpdateIssue(identifier?: string | null, version?: number, orgId?: string | null) {
+  const invalidate = useIssueInvalidation(identifier, orgId);
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => issuesApi.update(identifier!, { ...data, expectedVersion: version }),
     onSuccess: invalidate,
   });
 }
 
-export function useMoveIssueCycle(projectId?: string | null, issue?: Issue | null) {
-  const invalidate = useIssueInvalidation(issue?.identifier);
+export function useMoveIssueCycle(projectId?: string | null, issue?: Issue | null, orgId?: string | null) {
+  const invalidate = useIssueInvalidation(issue?.identifier, orgId);
   return useMutation({
     mutationFn: async (cycleId: string | null) => {
       if (!projectId || !issue) return;
@@ -54,19 +54,19 @@ export function useDeleteIssueComment(issueId?: string | null) {
   });
 }
 
-export function useAddIssueParticipant(identifier?: string | null) {
+export function useAddIssueParticipant(identifier?: string | null, orgId?: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) => issuesApi.addParticipant(identifier!, userId, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issueKeys.participants(identifier) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: issueKeys.participants(orgId, identifier) }),
   });
 }
 
-export function useRemoveIssueParticipant(identifier?: string | null) {
+export function useRemoveIssueParticipant(identifier?: string | null, orgId?: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (participantId: string) => issuesApi.removeParticipant(identifier!, participantId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issueKeys.participants(identifier) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: issueKeys.participants(orgId, identifier) }),
   });
 }
 
@@ -89,11 +89,15 @@ export function useDeleteIssueRelation(issueId?: string | null) {
   });
 }
 
-export function useScheduleIssue(identifier?: string | null) {
-  const invalidate = useIssueInvalidation(identifier);
+export function useScheduleIssue(identifier?: string | null, orgId?: string | null, projectId?: string | null) {
+  const queryClient = useQueryClient();
+  const invalidate = useIssueInvalidation(identifier, orgId);
   return useMutation({
     mutationFn: ({ startsAt, durationHours }: { startsAt: string; durationHours: number }) => issuesApi.schedule(identifier!, startsAt, durationHours),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await invalidate();
+      if (projectId) await queryClient.invalidateQueries({ queryKey: planningKeys.schedule(projectId) });
+    },
   });
 }
 

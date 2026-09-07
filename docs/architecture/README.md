@@ -58,17 +58,13 @@ Not every feature needs every folder. Create folders only when the responsibilit
 Before committing changes:
 
 ```bash
-npm run check:architecture
-npm run typecheck
-npm run lint
-npx expo-doctor
+pnpm run verify
 ```
 
 For release-impacting changes, also bundle both platforms:
 
 ```bash
-npx expo export --platform android --output-dir .dist-test
-npx expo export --platform ios --output-dir .dist-ios-test
+pnpm run verify:release
 ```
 
 The architecture checker is intentionally executable policy, not only documentation.

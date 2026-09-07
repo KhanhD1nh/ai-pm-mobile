@@ -5,5 +5,5 @@ import { useAuth } from '@/providers/auth-provider';
 export default function Index() {
   const { ready, user } = useAuth();
   if (!ready) return <LoadingScreen />;
-  return <Redirect href={user ? '/(tabs)/home' : '/login'} />;
+  return <Redirect href={user ? '/home' : '/login'} />;
 }

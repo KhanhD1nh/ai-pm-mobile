@@ -24,6 +24,7 @@ export interface IssueParticipantBrief {
 export interface Issue {
   id: string;
   project_id: string;
+  organization_id?: string;
   number: number;
   identifier: string;
   title: string;

@@ -1,73 +1,111 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import Ionicons, { type IoniconsIconName } from '@react-native-vector-icons/ionicons';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, Muted, Pill, SectionTitle } from '@/shared/components/ui/primitives';
+import { SectionHeader } from '@/shared/components/ui/mobile';
+import { MotionPressable } from '@/shared/components/ui/motion';
 import { LoadingScreen, Screen } from '@/shared/components/ui/screen';
+import type { AppTheme } from '@/shared/components/ui/theme';
+import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { useProjectDashboard } from '../hooks/use-project-dashboard';
-
-const menu = [
-  ['Board', 'kanban-outline', 'board'],
-  ['Planning', 'calendar-outline', 'planning'],
-  ['Wiki', 'document-text-outline', 'wiki'],
-  ['Members', 'people-outline', 'members'],
-  ['Workflow', 'git-branch-outline', 'workflow'],
-  ['Settings', 'settings-outline', 'settings'],
-] as const;
 
 export default function ProjectHomeScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { theme: ui, language } = useAppPreferences();
+  const styles = useMemo(() => createStyles(ui), [ui]);
   const { project, report, refreshing, refresh } = useProjectDashboard(projectId);
 
   if (project.isLoading) return <LoadingScreen />;
-  if (!project.data) return <Screen title="Project"><Muted>Không tìm thấy dự án.</Muted></Screen>;
+  if (!project.data) return <Screen><Text style={{ color: ui.colors.textSecondary }}>{language === 'vi' ? 'Không tìm thấy dự án.' : 'Project not found.'}</Text></Screen>;
 
   const data = project.data;
   const totals = report.data?.totals;
+  const total = totals?.total_issues ?? data.issue_counter;
+  const done = totals?.done ?? 0;
+  const active = totals?.in_progress ?? 0;
+  const progress = total > 0 ? Math.round((done / total) * 100) : 0;
+  const go = (route: string) => router.navigate(`/project/${projectId}/${route}` as never);
+  const alerts = report.data?.alerts ?? [];
+  const healthy = alerts.length === 0;
 
   return (
-    <Screen title={data.name} subtitle={data.key} refreshing={refreshing} onRefresh={() => void refresh()}>
-      {data.description ? <Muted>{data.description}</Muted> : null}
-      <View style={styles.stats}>
-        <Card><Text style={styles.num}>{totals?.total_issues ?? data.issue_counter}</Text><Muted>Issues</Muted></Card>
-        <Card><Text style={styles.num}>{totals?.in_progress ?? 0}</Text><Muted>Doing</Muted></Card>
-        <Card><Text style={styles.num}>{totals?.done ?? 0}</Text><Muted>Done</Muted></Card>
+    <Screen edges={[]} refreshing={refreshing} onRefresh={() => void refresh()}>
+      <View style={styles.overview}>
+        <View style={styles.overviewTop}>
+          <View style={styles.progressBlock}>
+            <Text style={styles.eyebrow}>{language === 'vi' ? 'TIẾN ĐỘ' : 'PROGRESS'}</Text>
+            <Text style={styles.progressValue}>{progress}%</Text>
+          </View>
+          <View style={styles.healthLine}>
+            <View style={[styles.healthDot, !healthy && styles.healthDotWarning]} />
+            <Text style={styles.healthText}>{healthy ? (language === 'vi' ? 'Đang ổn định' : 'On track') : (language === 'vi' ? 'Cần chú ý' : 'Needs attention')}</Text>
+          </View>
+        </View>
+        <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress}%` }]} /></View>
+        <Text style={styles.summary}>{done} {language === 'vi' ? 'hoàn thành' : 'done'} · {active} {language === 'vi' ? 'đang làm' : 'active'} · {total} {language === 'vi' ? 'tổng' : 'total'}</Text>
+        {data.description ? <Text style={styles.description}>{data.description}</Text> : null}
       </View>
 
-      {(report.data?.alerts?.length ?? 0) > 0 ? (
+      {alerts.length > 0 ? (
         <>
-          <SectionTitle>Cần chú ý</SectionTitle>
-          {report.data!.alerts!.map((alert, index) => (
-            <Card key={`${alert.type}-${index}`}>
-              <View style={styles.row}>
-                <Pill text={alert.severity} />
-                <Text style={styles.itemTitle}>{alert.type.replaceAll('_', ' ')}</Text>
-                <Text style={styles.count}>{alert.count}</Text>
-              </View>
-            </Card>
-          ))}
+          <SectionHeader title={language === 'vi' ? 'Cần chú ý' : 'Needs attention'} />
+          <View style={styles.list}>
+            {alerts.slice(0, 5).map((alert, index) => {
+              const severe = alert.severity === 'HIGH' || alert.severity === 'CRITICAL';
+              return (
+                <View key={`${alert.type}-${index}`} style={[styles.alertRow, index > 0 && styles.divider]}>
+                  <Ionicons accessible={false} name={severe ? 'warning-outline' : 'alert-circle-outline'} size={18} color={severe ? ui.colors.danger : ui.colors.warning} />
+                  <Text style={styles.alertLabel} numberOfLines={2}>{alert.type.replaceAll('_', ' ')}</Text>
+                  <Text style={styles.alertCount}>{alert.count}</Text>
+                </View>
+              );
+            })}
+          </View>
         </>
       ) : null}
 
-      <SectionTitle>Công cụ dự án</SectionTitle>
-      <View style={styles.grid}>
-        {menu.map(([label, icon, route]) => (
-          <Pressable key={route} style={styles.menu} onPress={() => router.push(`/project/${projectId}/${route}` as never)}>
-            <Ionicons name={icon as never} size={24} color="#4da3ff" />
-            <Text style={styles.menuText}>{label}</Text>
-          </Pressable>
-        ))}
+      <SectionHeader title={language === 'vi' ? 'Trong dự án' : 'Project tools'} />
+      <View style={styles.list}>
+        <ProjectLink icon="document-text-outline" label="Wiki" detail={language === 'vi' ? 'Tài liệu và ghi chú' : 'Docs and notes'} onPress={() => go('wiki')} ui={ui} />
+        <ProjectLink icon="people-outline" label={language === 'vi' ? 'Thành viên' : 'Members'} detail={language === 'vi' ? 'Những người trong dự án' : 'People in this project'} onPress={() => go('members')} ui={ui} bordered />
+        <ProjectLink icon="settings-outline" label={language === 'vi' ? 'Cài đặt' : 'Settings'} detail={language === 'vi' ? 'Workflow và tích hợp' : 'Workflow and integrations'} onPress={() => go('settings')} ui={ui} bordered />
       </View>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  stats: { flexDirection: 'row', gap: 8 },
-  num: { color: '#f5f7fa', fontSize: 24, fontWeight: '900' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  itemTitle: { flex: 1, color: '#eef2f6', fontWeight: '800' },
-  count: { color: '#f5f7fa', fontWeight: '900', fontSize: 18 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  menu: { width: '47%', minHeight: 92, borderWidth: 1, borderColor: '#202a35', borderRadius: 16, padding: 14, backgroundColor: '#111820', gap: 10 },
-  menuText: { color: '#eef2f6', fontWeight: '800' },
+function ProjectLink({ icon, label, detail, onPress, ui, bordered = false }: { icon: IoniconsIconName; label: string; detail: string; onPress: () => void; ui: AppTheme; bordered?: boolean }) {
+  const styles = useMemo(() => createStyles(ui), [ui]);
+  return (
+    <MotionPressable accessibilityRole="button" accessibilityLabel={`${label}, ${detail}`} onPress={onPress} style={[styles.linkRow, bordered && styles.divider]}>
+      <Ionicons accessible={false} name={icon} size={19} color={ui.colors.textSecondary} />
+      <View style={styles.linkCopy}><Text style={styles.linkTitle}>{label}</Text><Text style={styles.linkDetail}>{detail}</Text></View>
+      <Ionicons accessible={false} name="chevron-forward" size={16} color={ui.colors.textMuted} />
+    </MotionPressable>
+  );
+}
+
+const createStyles = (ui: AppTheme) => StyleSheet.create({
+  overview: { gap: 11, paddingTop: 10, paddingBottom: 4 },
+  overviewTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14 },
+  progressBlock: { flex: 1, minWidth: 0 },
+  eyebrow: { color: ui.colors.textMuted, ...ui.typography.eyebrow },
+  progressValue: { color: ui.colors.text, fontSize: 36, lineHeight: 42, fontWeight: '700', letterSpacing: -1.1, marginTop: 2 },
+  healthLine: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  healthDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ui.colors.success },
+  healthDotWarning: { backgroundColor: ui.colors.warning },
+  healthText: { color: ui.colors.textSecondary, ...ui.typography.caption },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: ui.colors.surfaceRaised },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: ui.colors.accentStrong },
+  summary: { color: ui.colors.textMuted, ...ui.typography.caption },
+  description: { color: ui.colors.textSecondary, fontSize: 15.5, lineHeight: 23, marginTop: 3 },
+  list: { overflow: 'hidden' },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border },
+  alertRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
+  alertLabel: { flex: 1, color: ui.colors.text, ...ui.typography.body, textTransform: 'capitalize' },
+  alertCount: { color: ui.colors.textSecondary, fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  linkRow: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  linkCopy: { flex: 1, minWidth: 0 },
+  linkTitle: { color: ui.colors.text, fontSize: 16, lineHeight: 22, fontWeight: '500' },
+  linkDetail: { color: ui.colors.textMuted, ...ui.typography.caption, marginTop: 2 },
 });

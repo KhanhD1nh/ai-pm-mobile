@@ -1,8 +1,13 @@
-import { useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@react-native-vector-icons/ionicons';
+import { useMemo, useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Button, Card, Field, Muted, Pill } from '@/shared/components/ui/primitives';
+import { Button, Field, Pill } from '@/shared/components/ui/primitives';
+import { BottomSheet, ChoiceRow, GlassIconButton, ListGroup, SectionHeader } from '@/shared/components/ui/mobile';
+import { MotionPressable } from '@/shared/components/ui/motion';
 import { Screen } from '@/shared/components/ui/screen';
+import type { AppTheme } from '@/shared/components/ui/theme';
+import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import type { StatusCategory } from '@/shared/contracts';
 import { useWorkflow } from '../queries/use-workflow';
@@ -12,6 +17,8 @@ const categories: StatusCategory[] = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'IN_REVI
 
 export default function WorkflowScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { theme: ui, language } = useAppPreferences();
+  const styles = useMemo(() => createStyles(ui), [ui]);
   const { project, ordered } = useWorkflow(projectId);
   const create = useCreateWorkflowStatus(projectId);
   const update = useUpdateWorkflowStatus(projectId);
@@ -20,7 +27,7 @@ export default function WorkflowScreen() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState<StatusCategory>('TODO');
 
-  const onError = (error: unknown) => presentError('Không thể cập nhật workflow', error);
+  const onError = (error: unknown) => presentError(language === 'vi' ? 'Không thể cập nhật workflow' : 'Could not update workflow', error);
   const move = (index: number, delta: number) => {
     const target = index + delta;
     if (target < 0 || target >= ordered.length) return;
@@ -29,72 +36,47 @@ export default function WorkflowScreen() {
     update.mutate({ id: current.id, data: { position: next.position } }, { onError });
     update.mutate({ id: next.id, data: { position: current.position } }, { onError });
   };
-
-  const createStatus = () => create.mutate(
-    { name: name.trim(), category, position: ordered.length + 1 },
-    {
-      onSuccess: () => {
-        setOpen(false);
-        setName('');
-      },
-      onError,
-    },
-  );
+  const createStatus = () => create.mutate({ name: name.trim(), category, position: ordered.length + 1 }, { onSuccess: () => { setOpen(false); setName(''); }, onError });
 
   return (
-    <Screen title={`Workflow · ${project.data?.key ?? ''}`} subtitle="Quản lý thứ tự Board" right={<Button title="+ Status" onPress={() => setOpen(true)} />}>
-      {ordered.map((status, index) => (
-        <Card key={status.id}>
-          <View style={styles.row}>
-            <Pill text={`${index + 1}`} />
-            <View style={{ flex: 1 }}><Text style={styles.title}>{status.name}</Text><Muted>{status.category}</Muted></View>
-            {status.is_default ? <Pill text="DEFAULT" /> : null}
-          </View>
-          <View style={styles.actions}>
-            <Button kind="secondary" title="↑" onPress={() => move(index, -1)} />
-            <Button kind="secondary" title="↓" onPress={() => move(index, 1)} />
-            <Button
-              kind="danger"
-              title="Xóa"
-              onPress={() => Alert.alert('Xóa status?', status.name, [
-                { text: 'Hủy' },
-                { text: 'Xóa', style: 'destructive', onPress: () => remove.mutate(status.id, { onError }) },
-              ])}
-            />
-          </View>
-        </Card>
-      ))}
-
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Tạo status</Text>
-            <Field placeholder="Tên status" value={name} onChangeText={setName} />
-            <View style={styles.wrap}>
-              {categories.map((item) => (
-                <Pressable key={item} onPress={() => setCategory(item)} style={[styles.choice, category === item && styles.active]}>
-                  <Text style={styles.choiceText}>{item}</Text>
-                </Pressable>
-              ))}
+    <Screen chrome="stack" title="Workflow" subtitle={project.data?.name ?? project.data?.key} right={<GlassIconButton icon="add" label={language === 'vi' ? 'Thêm status' : 'Add status'} onPress={() => setOpen(true)} />}>
+      <SectionHeader title={language === 'vi' ? 'Luồng trạng thái' : 'Status flow'} caption={language === 'vi' ? 'Thứ tự này quyết định cách issue di chuyển trên board' : 'This order controls how issues move across the board'} />
+      <ListGroup variant="plain">
+        {ordered.map((status, index) => (
+          <View key={status.id} style={[styles.statusRow, index > 0 && styles.border]}>
+            <View style={styles.indexBadge}><Text style={styles.indexText}>{index + 1}</Text></View>
+            <View style={styles.copy}><View style={styles.titleRow}><Text style={styles.title}>{status.name}</Text>{status.is_default ? <Pill text="DEFAULT" tone="accent" /> : null}</View><Text style={styles.meta}>{status.category}</Text></View>
+            <View style={styles.actions}>
+              <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Di chuyển lên' : 'Move up'} disabled={index === 0} onPress={() => move(index, -1)} style={[styles.iconButton, index === 0 && styles.disabled]}><Ionicons accessible={false} name="arrow-up" size={17} color={ui.colors.textSecondary} /></MotionPressable>
+              <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Di chuyển xuống' : 'Move down'} disabled={index === ordered.length - 1} onPress={() => move(index, 1)} style={[styles.iconButton, index === ordered.length - 1 && styles.disabled]}><Ionicons accessible={false} name="arrow-down" size={17} color={ui.colors.textSecondary} /></MotionPressable>
+              <MotionPressable accessibilityRole="button" accessibilityLabel={language === 'vi' ? 'Xóa trạng thái' : 'Delete status'} onPress={() => Alert.alert(language === 'vi' ? 'Xóa status?' : 'Delete status?', status.name, [{ text: language === 'vi' ? 'Hủy' : 'Cancel' }, { text: language === 'vi' ? 'Xóa' : 'Delete', style: 'destructive', onPress: () => remove.mutate(status.id, { onError }) }])} style={[styles.iconButton, styles.dangerButton]}><Ionicons accessible={false} name="trash-outline" size={17} color={ui.colors.danger} /></MotionPressable>
             </View>
-            <Button title="Tạo" disabled={!name.trim() || create.isPending} onPress={createStatus} />
-            <Button kind="secondary" title="Hủy" onPress={() => setOpen(false)} />
           </View>
-        </View>
-      </Modal>
+        ))}
+      </ListGroup>
+
+      <BottomSheet visible={open} title={language === 'vi' ? 'Tạo status' : 'Create status'} onClose={() => setOpen(false)} footer={<Button title={language === 'vi' ? 'Tạo status' : 'Create status'} disabled={!name.trim() || create.isPending} onPress={createStatus} />}>
+        <Field placeholder={language === 'vi' ? 'Tên status' : 'Status name'} value={name} onChangeText={setName} autoFocus />
+        <Text style={styles.sheetLabel}>{language === 'vi' ? 'Nhóm trạng thái' : 'Status category'}</Text>
+        {categories.map((item) => <ChoiceRow key={item} label={item} active={category === item} onPress={() => setCategory(item)} />)}
+      </BottomSheet>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  title: { color: '#eef2f6', fontWeight: '800' },
-  actions: { flexDirection: 'row', gap: 8 },
-  wrap: { flexDirection: 'row', gap: 7, flexWrap: 'wrap' },
-  choice: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, backgroundColor: '#17212b' },
-  active: { backgroundColor: '#2388ff' },
-  choiceText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0009' },
-  sheet: { backgroundColor: '#10171f', padding: 20, paddingBottom: 34, borderTopLeftRadius: 24, borderTopRightRadius: 24, gap: 12 },
-  sheetTitle: { color: '#f5f7fa', fontSize: 22, fontWeight: '900' },
+const createStyles = (ui: AppTheme) => StyleSheet.create({
+  statusRow: { minHeight: 70, flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 11 },
+  border: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border },
+  indexBadge: { width: 30, height: 30, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.surfaceRaised },
+  indexText: { color: ui.colors.textMuted, ...ui.typography.caption, fontWeight: '700' },
+  copy: { flex: 1, minWidth: 0 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  title: { flexShrink: 1, color: ui.colors.text, ...ui.typography.bodyStrong },
+  meta: { color: ui.colors.textMuted, ...ui.typography.caption, marginTop: 3 },
+  actions: { flexDirection: 'row', gap: 5 },
+  iconButton: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.surfaceRaised },
+  dangerButton: { backgroundColor: ui.colors.dangerSoft },
+  disabled: { opacity: 0.32 },
+  sheetLabel: { color: ui.colors.textMuted, ...ui.typography.eyebrow, marginTop: 8, marginBottom: 2 },
 });
+

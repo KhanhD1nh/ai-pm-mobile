@@ -7,6 +7,21 @@ https://docs.expo.dev/versions/v57.0.0/
 
 This repository targets Expo SDK 57. Do not assume APIs from another SDK version.
 
+## UI/UX work
+
+For any task that changes mobile layout, navigation, typography, spacing, color, theme, Liquid Glass, loading/empty/error states, motion, gestures, haptics, accessibility, or perceived performance, read and follow:
+
+1. `.agents/skills/ai-pm-mobile-ui-ux/SKILL.md`
+2. `docs/ui-ux/UI_UX_BASELINE.md`
+3. `docs/ui-ux/UI_UX_AUDIT_CHECKLIST.md` for audits and sign-off
+4. `docs/ui-ux/RESEARCH_SOURCES.md` when platform guidance is version-sensitive
+
+For broad redesigns or visual-debug passes, use `docs/ui-ux/UI_UX_AGENT_PROMPT.md` as the operating prompt.
+
+The existing mobile UI is not a visual specification. Preserve product behavior and architecture, but redesign weak mobile composition instead of copying or polishing a desktop-first layout.
+
+Meaningful UI redesigns require visual verification on a real device or simulator whenever available; passing TypeScript alone is not UI sign-off.
+
 ## Production architecture
 
 Read `docs/architecture/README.md` and the ADRs before adding or moving application code.
@@ -29,17 +44,13 @@ Mandatory boundaries:
 Before committing application changes run:
 
 ```bash
-npm run check:architecture
-npm run typecheck
-npm run lint
-npx expo-doctor
+pnpm run verify
 ```
 
 For release-impacting changes also bundle both platforms:
 
 ```bash
-npx expo export --platform android --output-dir .dist-test
-npx expo export --platform ios --output-dir .dist-ios-test
+pnpm run verify:release
 ```
 
 Do not weaken architecture checks to make invalid code pass; fix the dependency or responsibility boundary instead.

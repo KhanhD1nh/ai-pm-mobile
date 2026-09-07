@@ -14,6 +14,14 @@ export function useAddProjectMember(projectId?: string | null) {
   });
 }
 
+export function useAddProjectMembersBatch(projectId?: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userIds, role }: { userIds: string[]; role: string }) => membersApi.addBatch(projectId!, userIds, role),
+    onSuccess: () => invalidateMembers(queryClient, projectId),
+  });
+}
+
 export function useUpdateProjectMemberRole(projectId?: string | null) {
   const queryClient = useQueryClient();
   return useMutation({

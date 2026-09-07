@@ -1,14 +1,25 @@
 {
   "cli": {
-    "version": ">= 16.0.0"
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal"
     },
+    "unsigned-ios": {
+      "developmentClient": true,
+      "ios": {
+        "withoutCredentials": true,
+        "config": "unsigned-ios.yml"
+      }
+    },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
       "autoIncrement": true

@@ -12,13 +12,13 @@ export function useHomeDashboard(orgId?: string | null, userId?: string | null) 
   });
   const issues = useQuery({
     queryKey: issueKeys.myWork(orgId, userId),
-    queryFn: () => issuesApi.list({ assigneeId: userId!, limit: 100 }),
+    queryFn: () => issuesApi.list({ assigneeId: userId!, limit: 100, sortBy: 'updated_at', sortOrder: 'desc' }),
     enabled: !!orgId && !!userId,
   });
   const unread = useQuery({
-    queryKey: notificationKeys.unread(),
+    queryKey: notificationKeys.unread(orgId),
     queryFn: notificationsApi.unreadCount,
-    enabled: !!userId,
+    enabled: !!orgId && !!userId,
   });
 
   const derived = useMemo(() => {

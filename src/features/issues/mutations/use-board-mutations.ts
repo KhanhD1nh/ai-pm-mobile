@@ -9,13 +9,21 @@ export type CreateIssueInput = {
   priority: string;
   statusId?: string;
   assigneeId?: string;
+  cycleId?: string;
+  participants?: { userId: string; role: string }[];
+  participantIds?: string[];
 };
 
 export function useCreateIssue(projectId?: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateIssueInput) => issuesApi.create({ projectId, ...input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: issueKeys.project(projectId) }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: issueKeys.project(projectId) }),
+        queryClient.invalidateQueries({ queryKey: issueKeys.projectInfinite(projectId) }),
+      ]);
+    },
   });
 }
 
@@ -27,6 +35,7 @@ export function useQuickMoveIssue(projectId?: string | null) {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: issueKeys.project(projectId) }),
+        queryClient.invalidateQueries({ queryKey: issueKeys.projectInfinite(projectId) }),
         queryClient.invalidateQueries({ queryKey: projectKeys.all }),
       ]);
     },

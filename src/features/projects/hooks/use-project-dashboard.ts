@@ -2,7 +2,7 @@ import { useProject, useProjectReport } from '../queries/use-projects';
 
 export function useProjectDashboard(projectId?: string | null) {
   const project = useProject(projectId);
-  const report = useProjectReport(project.data?.key);
+  const report = useProjectReport(projectId, project.data?.key);
 
   return {
     project,

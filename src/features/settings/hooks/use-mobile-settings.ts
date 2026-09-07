@@ -4,12 +4,14 @@ import { notificationKeys } from '@/features/notifications/public';
 import { pushApi } from '@/infrastructure/push/push-api';
 import { registerForPushNotifications, syncAppBadge } from '@/infrastructure/push/push-service';
 import { isBiometricLockEnabled, setBiometricLockEnabled } from '@/infrastructure/security/biometric-service';
+import { useAuth } from '@/providers/auth-provider';
 
 export function useMobileSettings() {
   const queryClient = useQueryClient();
+  const { orgId } = useAuth();
   const [busy, setBusy] = useState(false);
   const [biometric, setBiometric] = useState(false);
-  const devices = useQuery({ queryKey: notificationKeys.devices(), queryFn: pushApi.devices });
+  const devices = useQuery({ queryKey: notificationKeys.devices(orgId), queryFn: pushApi.devices, enabled: !!orgId });
 
   useEffect(() => {
     void isBiometricLockEnabled().then(setBiometric);
@@ -19,7 +21,7 @@ export function useMobileSettings() {
     setBusy(true);
     try {
       await registerForPushNotifications();
-      await queryClient.invalidateQueries({ queryKey: notificationKeys.devices() });
+      await queryClient.invalidateQueries({ queryKey: notificationKeys.devices(orgId) });
       await syncAppBadge();
     } finally {
       setBusy(false);
@@ -28,7 +30,7 @@ export function useMobileSettings() {
 
   const disableDevice = async (deviceId: string) => {
     await pushApi.disableDevice(deviceId);
-    await queryClient.invalidateQueries({ queryKey: notificationKeys.devices() });
+    await queryClient.invalidateQueries({ queryKey: notificationKeys.devices(orgId) });
   };
 
   const toggleBiometric = async (enabled: boolean) => {

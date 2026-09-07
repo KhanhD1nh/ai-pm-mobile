@@ -1,14 +1,22 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 const KEY = 'ai_pm_biometric_lock';
 const listeners = new Set<(enabled: boolean) => void>();
 
 export async function isBiometricLockEnabled() {
+  if (Platform.OS === 'web') return false;
   return (await SecureStore.getItemAsync(KEY)) === '1';
 }
 
 export async function setBiometricLockEnabled(enabled: boolean) {
+  if (Platform.OS === 'web') {
+    if (enabled) throw new Error('Khóa sinh trắc học không được hỗ trợ trên web');
+    listeners.forEach((listener) => listener(false));
+    return;
+  }
+
   if (enabled) {
     const compatible = await LocalAuthentication.hasHardwareAsync();
     const enrolled = await LocalAuthentication.isEnrolledAsync();
@@ -28,6 +36,8 @@ export function subscribeBiometricLock(listener: (enabled: boolean) => void) {
 }
 
 export async function authenticateForAppUnlock() {
+  if (Platform.OS === 'web') return false;
+
   const result = await LocalAuthentication.authenticateAsync({
     promptMessage: 'Mở khóa AI-PM',
     cancelLabel: 'Hủy',

@@ -10,8 +10,8 @@ export function useProject(projectId?: string | null) {
   return useQuery({ queryKey: projectKeys.detail(projectId), queryFn: () => projectsApi.get(projectId!), enabled: !!projectId });
 }
 
-export function useProjectReport(projectKey?: string | null) {
-  return useQuery({ queryKey: projectKeys.report(projectKey), queryFn: () => projectsApi.report(projectKey!), enabled: !!projectKey });
+export function useProjectReport(projectId?: string | null, projectKey?: string | null) {
+  return useQuery({ queryKey: projectKeys.report(projectId, projectKey), queryFn: () => projectsApi.report(projectKey!), enabled: !!projectId && !!projectKey });
 }
 
 export function useProjectTags(projectId?: string | null) {
