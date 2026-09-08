@@ -1,8 +1,14 @@
-import { useAuth } from '@/providers/auth-provider';
-import type { NotificationItem } from '@/shared/contracts';
-import { useNotifications, useUnreadNotificationCount } from '../queries/use-notifications';
-import { useMarkAllNotificationsRead, useMarkNotificationRead } from '../mutations/use-notification-mutations';
-import type { NotificationFilter } from '../model/notification-filter';
+import { useAuth } from "@/providers/auth-provider";
+import type { NotificationItem } from "@/shared/contracts";
+import {
+  useNotifications,
+  useUnreadNotificationCount,
+} from "../queries/use-notifications";
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+} from "../mutations/use-notification-mutations";
+import type { NotificationFilter } from "../model/notification-filter";
 
 export function useNotificationInbox(filter: NotificationFilter) {
   const { orgId, selectOrganization } = useAuth();
@@ -12,7 +18,13 @@ export function useNotificationInbox(filter: NotificationFilter) {
   const markAll = useMarkAllNotificationsRead(orgId);
 
   const items = notifications.data
-    ? [...new Map(notifications.data.pages.flat().map((notification) => [notification.id, notification])).values()]
+    ? [
+        ...new Map(
+          notifications.data.pages
+            .flat()
+            .map((notification) => [notification.id, notification]),
+        ).values(),
+      ]
     : [];
 
   const prepareOpen = async (notification: NotificationItem) => {

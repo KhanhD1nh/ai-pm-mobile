@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { authApi } from '../api/auth-api';
-import { authKeys } from '../query-keys';
+import { useQuery } from "@tanstack/react-query";
+import { authApi } from "../api/auth-api";
+import { authKeys } from "../query-keys";
 
 export function useSetupStatus() {
   return useQuery({

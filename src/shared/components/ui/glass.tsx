@@ -4,8 +4,8 @@ import {
   type GlassColorScheme,
   type GlassStyle,
   type GlassViewProps,
-} from 'expo-glass-effect';
-import { useEffect, useState, type PropsWithChildren } from 'react';
+} from "expo-glass-effect";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import {
   AccessibilityInfo,
   Platform,
@@ -15,27 +15,36 @@ import {
   type StyleProp,
   type ViewProps,
   type ViewStyle,
-} from 'react-native';
+} from "react-native";
 
-export type GlassVariant = 'regular' | 'clear' | string;
+export type GlassVariant = "regular" | "clear" | string;
 
 function useCanUseNativeGlass() {
-  const [reduceTransparency, setReduceTransparency] = useState<boolean | null>(Platform.OS === 'ios' ? null : false);
+  const [reduceTransparency, setReduceTransparency] = useState<boolean | null>(
+    Platform.OS === "ios" ? null : false,
+  );
 
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (Platform.OS !== "ios") return;
     let mounted = true;
     void AccessibilityInfo.isReduceTransparencyEnabled().then((value) => {
       if (mounted) setReduceTransparency(value);
     });
-    const subscription = AccessibilityInfo.addEventListener('reduceTransparencyChanged', setReduceTransparency);
+    const subscription = AccessibilityInfo.addEventListener(
+      "reduceTransparencyChanged",
+      setReduceTransparency,
+    );
     return () => {
       mounted = false;
       subscription.remove();
     };
   }, []);
 
-  return Platform.OS === 'ios' && reduceTransparency === false && isLiquidGlassAvailable();
+  return (
+    Platform.OS === "ios" &&
+    reduceTransparency === false &&
+    isLiquidGlassAvailable()
+  );
 }
 
 export function LiquidGlassSurface({
@@ -46,7 +55,7 @@ export function LiquidGlassSurface({
   interactive = false,
   tintColor,
   borderRadius,
-  colorScheme = 'auto',
+  colorScheme = "auto",
   ...viewProps
 }: PropsWithChildren<{
   style?: StyleProp<ViewStyle>;
@@ -56,17 +65,35 @@ export function LiquidGlassSurface({
   tintColor?: ColorValue;
   borderRadius?: number;
   colorScheme?: GlassColorScheme;
-}> & Omit<GlassViewProps, 'style' | 'children' | 'tintColor' | 'isInteractive' | 'glassEffectStyle' | 'colorScheme'>) {
+}> &
+  Omit<
+    GlassViewProps,
+    | "style"
+    | "children"
+    | "tintColor"
+    | "isInteractive"
+    | "glassEffectStyle"
+    | "colorScheme"
+  >) {
   const canUseNativeGlass = useCanUseNativeGlass();
   const flattened = StyleSheet.flatten(style) as ViewStyle | undefined;
-  const resolvedRadius = borderRadius ?? (typeof flattened?.borderRadius === 'number' ? flattened.borderRadius : undefined);
+  const resolvedRadius =
+    borderRadius ??
+    (typeof flattened?.borderRadius === "number"
+      ? flattened.borderRadius
+      : undefined);
 
   if (!canUseNativeGlass) {
-    return <View {...(viewProps as ViewProps)} style={[style, fallbackStyle]}>{children}</View>;
+    return (
+      <View {...(viewProps as ViewProps)} style={[style, fallbackStyle]}>
+        {children}
+      </View>
+    );
   }
 
-  const glassEffectStyle: GlassStyle = variant === 'clear' ? 'clear' : 'regular';
-  const resolvedTint = typeof tintColor === 'string' ? tintColor : undefined;
+  const glassEffectStyle: GlassStyle =
+    variant === "clear" ? "clear" : "regular";
+  const resolvedTint = typeof tintColor === "string" ? tintColor : undefined;
 
   return (
     <GlassView
@@ -80,7 +107,10 @@ export function LiquidGlassSurface({
       // makes clear glass look like an opaque blur panel, especially in dark
       // mode. Keep the radius, but let the native material draw outside its
       // internal sampling bounds.
-      style={[style, resolvedRadius != null && { borderRadius: resolvedRadius }]}
+      style={[
+        style,
+        resolvedRadius != null && { borderRadius: resolvedRadius },
+      ]}
     >
       {children}
     </GlassView>

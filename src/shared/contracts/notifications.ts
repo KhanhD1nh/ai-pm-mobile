@@ -4,7 +4,7 @@ export interface NotificationItem {
   user_id: string;
   project_id?: string | null;
   type: string;
-  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+  priority: "LOW" | "NORMAL" | "HIGH" | "URGENT";
   title?: string | null;
   body?: string | null;
   read: boolean;

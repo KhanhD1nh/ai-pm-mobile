@@ -1,1 +1,1 @@
-export { default } from '@/features/agents/screens/agents-screen';
+export { default } from "@/features/agents/screens/agents-screen";

@@ -1,5 +1,5 @@
-import { Stack } from 'expo-router';
-import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
+import { Stack } from "expo-router";
+import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 
 export default function ProjectsTabStackLayout() {
   const { theme: ui } = useAppPreferences();

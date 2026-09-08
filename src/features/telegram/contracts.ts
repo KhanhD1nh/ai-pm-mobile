@@ -11,11 +11,11 @@ export interface TelegramPreferences {
 }
 
 export type TelegramPreferenceKey =
-  | 'notificationsEnabled'
-  | 'notifyAssigned'
-  | 'notifyDeadline'
-  | 'notifyStatusChange'
-  | 'notifyComments';
+  | "notificationsEnabled"
+  | "notifyAssigned"
+  | "notifyDeadline"
+  | "notifyStatusChange"
+  | "notifyComments";
 
 export interface TelegramLinkTokenResponse {
   token: string;

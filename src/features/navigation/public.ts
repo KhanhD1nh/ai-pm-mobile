@@ -1,1 +1,1 @@
-export { resolveExternalPath } from './external-link-resolver';
+export { resolveExternalPath } from "./external-link-resolver";

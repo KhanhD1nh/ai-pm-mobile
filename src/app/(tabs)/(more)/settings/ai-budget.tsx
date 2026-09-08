@@ -1,1 +1,1 @@
-export { default } from '@/features/organizations/screens/ai-budget-screen';
+export { default } from "@/features/organizations/screens/ai-budget-screen";

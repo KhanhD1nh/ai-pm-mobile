@@ -1,1 +1,1 @@
-export { default } from '@/features/settings/screens/system-users-screen';
+export { default } from "@/features/settings/screens/system-users-screen";

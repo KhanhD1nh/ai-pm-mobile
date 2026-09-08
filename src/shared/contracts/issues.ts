@@ -1,9 +1,10 @@
-import type { User } from './auth';
-import type { Cycle, Milestone } from './planning';
-import type { Tag, WorkflowStatus } from './projects';
+import type { User } from "./auth";
+import type { Cycle, Milestone } from "./planning";
+import type { Tag, WorkflowStatus } from "./projects";
 
-export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-export type ParticipantRole = 'ASSIGNEE' | 'REVIEWER' | 'NEXT_REVIEWER' | 'OBSERVER';
+export type Priority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export type ParticipantRole =
+  "ASSIGNEE" | "REVIEWER" | "NEXT_REVIEWER" | "OBSERVER";
 
 export interface IssueParticipant {
   id: string;
@@ -71,7 +72,7 @@ export interface IssueRelation {
   id: string;
   source_issue_id: string;
   target_issue_id: string;
-  type: 'BLOCKS' | 'RELATES_TO' | 'DUPLICATES';
+  type: "BLOCKS" | "RELATES_TO" | "DUPLICATES";
   created_at: string;
   target_issue?: Issue;
   source_issue?: Issue;

@@ -1,12 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
-import { membersApi, memberKeys } from '@/features/members/public';
-import { planningApi, planningKeys } from '@/features/planning/public';
-import { projectsApi, projectKeys } from '@/features/projects/public';
-import { workflowsApi, workflowKeys } from '@/features/workflows/public';
-import { issuesApi } from '../api/issues-api';
-import { issueKeys } from '../query-keys';
+import { useQuery } from "@tanstack/react-query";
+import { membersApi, memberKeys } from "@/features/members/public";
+import { planningApi, planningKeys } from "@/features/planning/public";
+import { projectsApi, projectKeys } from "@/features/projects/public";
+import { workflowsApi, workflowKeys } from "@/features/workflows/public";
+import { issuesApi } from "../api/issues-api";
+import { issueKeys } from "../query-keys";
 
-export function useIssueDetailData(identifier?: string | null, orgId?: string | null) {
+export function useIssueDetailData(
+  identifier?: string | null,
+  orgId?: string | null,
+) {
   const issue = useQuery({
     queryKey: issueKeys.detail(orgId, identifier),
     queryFn: () => issuesApi.get(identifier!),
@@ -14,7 +17,8 @@ export function useIssueDetailData(identifier?: string | null, orgId?: string | 
   });
   const projectId = issue.data?.project_id;
   const issueId = issue.data?.id;
-  const contextReady = !issue.data?.organization_id || issue.data.organization_id === orgId;
+  const contextReady =
+    !issue.data?.organization_id || issue.data.organization_id === orgId;
 
   const statuses = useQuery({
     queryKey: workflowKeys.statuses(projectId),
@@ -69,7 +73,12 @@ export function useIssueDetailData(identifier?: string | null, orgId?: string | 
     participants,
     relations,
     refresh: async () => {
-      await Promise.all([issue.refetch(), comments.refetch(), participants.refetch(), relations.refetch()]);
+      await Promise.all([
+        issue.refetch(),
+        comments.refetch(),
+        participants.refetch(),
+        relations.refetch(),
+      ]);
     },
   };
 }

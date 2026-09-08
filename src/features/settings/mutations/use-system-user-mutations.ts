@@ -1,9 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { settingsApi } from '../api/settings-api';
-import { settingsKeys } from '../query-keys';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { settingsApi } from "../api/settings-api";
+import { settingsKeys } from "../query-keys";
 
 function invalidateSystemUsers(queryClient: ReturnType<typeof useQueryClient>) {
-  return queryClient.invalidateQueries({ queryKey: settingsKeys.systemUsers() });
+  return queryClient.invalidateQueries({
+    queryKey: settingsKeys.systemUsers(),
+  });
 }
 
 export function useCreateSystemUser() {

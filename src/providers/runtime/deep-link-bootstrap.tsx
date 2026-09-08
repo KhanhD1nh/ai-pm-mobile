@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
-import * as Linking from 'expo-linking';
-import { router } from 'expo-router';
-import { resolveExternalPath } from '@/features/navigation/public';
-import { useAuth } from '@/providers/auth-provider';
-import { sessionStorage } from '@/infrastructure/auth/session-storage';
+import { useEffect, useRef } from "react";
+import * as Linking from "expo-linking";
+import { router } from "expo-router";
+import { resolveExternalPath } from "@/features/navigation/public";
+import { useAuth } from "@/providers/auth-provider";
+import { sessionStorage } from "@/infrastructure/auth/session-storage";
 
 export function DeepLinkBootstrap() {
   const { ready, user } = useAuth();
@@ -24,7 +24,7 @@ export function DeepLinkBootstrap() {
       if (!destination) return;
       if (!userRef.current) {
         await sessionStorage.setPendingDestination(destination);
-        if (active) router.replace('/login');
+        if (active) router.replace("/login");
         return;
       }
       if (active) router.push(destination as never);
@@ -37,7 +37,9 @@ export function DeepLinkBootstrap() {
       initialUrlHandled.current = true;
       void Linking.getInitialURL().then(handleUrl);
     }
-    const subscription = Linking.addEventListener('url', ({ url }) => { void handleUrl(url); });
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      void handleUrl(url);
+    });
     return () => {
       active = false;
       subscription.remove();

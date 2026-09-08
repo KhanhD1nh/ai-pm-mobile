@@ -1,4 +1,4 @@
-import { useProject, useProjectReport } from '../queries/use-projects';
+import { useProject, useProjectReport } from "../queries/use-projects";
 
 export function useProjectDashboard(projectId?: string | null) {
   const project = useProject(projectId);

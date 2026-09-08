@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { issuesApi, issueKeys } from '@/features/issues/public';
-import { projectsApi, projectKeys } from '@/features/projects/public';
-import { useDebouncedValue } from '@/shared/hooks/use-debounced-value';
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { issuesApi, issueKeys } from "@/features/issues/public";
+import { projectsApi, projectKeys } from "@/features/projects/public";
+import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
 
-export function useGlobalSearch(orgId: string | null | undefined, query: string) {
+export function useGlobalSearch(
+  orgId: string | null | undefined,
+  query: string,
+) {
   const normalizedQuery = query.trim();
   const debouncedQuery = useDebouncedValue(normalizedQuery);
 
@@ -21,8 +24,10 @@ export function useGlobalSearch(orgId: string | null | undefined, query: string)
   const filteredProjects = useMemo(() => {
     const term = normalizedQuery.toLowerCase();
     if (!term) return [];
-    return (projects.data ?? []).filter((project) =>
-      project.name.toLowerCase().includes(term) || project.key.toLowerCase().includes(term),
+    return (projects.data ?? []).filter(
+      (project) =>
+        project.name.toLowerCase().includes(term) ||
+        project.key.toLowerCase().includes(term),
     );
   }, [normalizedQuery, projects.data]);
 
@@ -31,13 +36,16 @@ export function useGlobalSearch(orgId: string | null | undefined, query: string)
     [projects.data],
   );
 
-  const isSearching = normalizedQuery.length >= 2 && (
-    normalizedQuery !== debouncedQuery || issues.isFetching
-  );
+  const isSearching =
+    normalizedQuery.length >= 2 &&
+    (normalizedQuery !== debouncedQuery || issues.isFetching);
 
   return {
     projects: filteredProjects,
-    issues: normalizedQuery === debouncedQuery && debouncedQuery.length >= 2 ? (issues.data ?? []) : [],
+    issues:
+      normalizedQuery === debouncedQuery && debouncedQuery.length >= 2
+        ? (issues.data ?? [])
+        : [],
     suggestedProjects,
     isSearching,
     issueQuery: issues,

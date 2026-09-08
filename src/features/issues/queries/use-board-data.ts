@@ -1,10 +1,10 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { membersApi, memberKeys } from '@/features/members/public';
-import { planningApi, planningKeys } from '@/features/planning/public';
-import { projectsApi, projectKeys } from '@/features/projects/public';
-import { workflowsApi, workflowKeys } from '@/features/workflows/public';
-import { issuesApi } from '../api/issues-api';
-import { issueKeys } from '../query-keys';
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { membersApi, memberKeys } from "@/features/members/public";
+import { planningApi, planningKeys } from "@/features/planning/public";
+import { projectsApi, projectKeys } from "@/features/projects/public";
+import { workflowsApi, workflowKeys } from "@/features/workflows/public";
+import { issuesApi } from "../api/issues-api";
+import { issueKeys } from "../query-keys";
 
 export type BoardIssueFilters = {
   priority?: string;
@@ -14,7 +14,10 @@ export type BoardIssueFilters = {
   q?: string;
 };
 
-export function useBoardData(projectId?: string | null, filters: BoardIssueFilters = {}) {
+export function useBoardData(
+  projectId?: string | null,
+  filters: BoardIssueFilters = {},
+) {
   const project = useQuery({
     queryKey: projectKeys.detail(projectId),
     queryFn: () => projectsApi.get(projectId!),
@@ -37,19 +40,23 @@ export function useBoardData(projectId?: string | null, filters: BoardIssueFilte
   });
   const issues = useInfiniteQuery({
     queryKey: issueKeys.projectInfiniteFiltered(projectId, filters),
-    queryFn: ({ pageParam }) => issuesApi.list({
-      projectId: projectId!,
-      priority: filters.priority,
-      assigneeId: filters.assigneeId,
-      unassigned: filters.unassigned ? 'true' : undefined,
-      cycleId: filters.cycleId,
-      q: filters.q,
-      limit: 30,
-      offset: pageParam,
-    }),
+    queryFn: ({ pageParam }) =>
+      issuesApi.list({
+        projectId: projectId!,
+        priority: filters.priority,
+        assigneeId: filters.assigneeId,
+        unassigned: filters.unassigned ? "true" : undefined,
+        cycleId: filters.cycleId,
+        q: filters.q,
+        limit: 30,
+        offset: pageParam,
+      }),
     enabled: !!projectId,
     initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => lastPage.length < 30 ? undefined : allPages.reduce((count, page) => count + page.length, 0),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length < 30
+        ? undefined
+        : allPages.reduce((count, page) => count + page.length, 0),
   });
 
   return {
@@ -60,7 +67,12 @@ export function useBoardData(projectId?: string | null, filters: BoardIssueFilte
     issues,
     issueItems: issues.data?.pages.flat() ?? [],
     refresh: async () => {
-      await Promise.all([issues.refetch(), statuses.refetch(), members.refetch(), cycles.refetch()]);
+      await Promise.all([
+        issues.refetch(),
+        statuses.refetch(),
+        members.refetch(),
+        cycles.refetch(),
+      ]);
     },
   };
 }

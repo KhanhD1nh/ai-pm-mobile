@@ -1,2 +1,2 @@
-export { organizationsApi } from './api/organizations-api';
-export { organizationKeys } from './query-keys';
+export { organizationsApi } from "./api/organizations-api";
+export { organizationKeys } from "./query-keys";

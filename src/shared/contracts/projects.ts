@@ -1,5 +1,12 @@
-export type ProjectMemberRole = 'LEAD' | 'MEMBER' | 'VIEWER';
-export type StatusCategory = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE' | 'CANCELED' | 'REJECTED';
+export type ProjectMemberRole = "LEAD" | "MEMBER" | "VIEWER";
+export type StatusCategory =
+  | "BACKLOG"
+  | "TODO"
+  | "IN_PROGRESS"
+  | "IN_REVIEW"
+  | "DONE"
+  | "CANCELED"
+  | "REJECTED";
 
 export interface Project {
   id: string;
@@ -46,9 +53,25 @@ export interface DailyReport {
   snapshot_date: string;
   computed_at: string | null;
   refreshed: boolean;
-  totals?: { total_issues: number; done: number; in_review: number; todo: number; in_progress: number; backlog: number; archived: number };
+  totals?: {
+    total_issues: number;
+    done: number;
+    in_review: number;
+    todo: number;
+    in_progress: number;
+    backlog: number;
+    archived: number;
+  };
   by_priority?: Record<string, number>;
   today?: { completions: number; new_tasks: number; net_change: number } | null;
-  stale_tasks?: { id: string; identifier: string; title: string; category: string; assignee_id?: string | null; updated_at: string; hours_since_update: number }[];
+  stale_tasks?: {
+    id: string;
+    identifier: string;
+    title: string;
+    category: string;
+    assignee_id?: string | null;
+    updated_at: string;
+    hours_since_update: number;
+  }[];
   alerts?: { type: string; severity: string; count: number }[];
 }

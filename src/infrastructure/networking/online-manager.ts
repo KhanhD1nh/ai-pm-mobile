@@ -1,5 +1,5 @@
-import NetInfo from '@react-native-community/netinfo';
-import { onlineManager } from '@tanstack/react-query';
+import NetInfo from "@react-native-community/netinfo";
+import { onlineManager } from "@tanstack/react-query";
 
 export function bindOnlineManager() {
   return NetInfo.addEventListener((state) => {

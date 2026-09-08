@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { projectsApi, projectKeys } from '@/features/projects/public';
-import { wikiApi } from '../api/wiki-api';
-import { wikiKeys } from '../query-keys';
+import { useQuery } from "@tanstack/react-query";
+import { projectsApi, projectKeys } from "@/features/projects/public";
+import { wikiApi } from "../api/wiki-api";
+import { wikiKeys } from "../query-keys";
 
 export function useProjectWiki(projectId?: string | null) {
   const project = useQuery({

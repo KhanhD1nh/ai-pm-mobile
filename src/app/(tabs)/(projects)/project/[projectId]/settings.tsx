@@ -1,1 +1,1 @@
-export { default } from '@/features/projects/screens/project-settings-screen';
+export { default } from "@/features/projects/screens/project-settings-screen";

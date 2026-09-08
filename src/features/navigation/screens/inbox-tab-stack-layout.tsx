@@ -1,5 +1,7 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function InboxTabStackLayout() {
-  return <Stack initialRouteName="inbox" screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack initialRouteName="inbox" screenOptions={{ headerShown: false }} />
+  );
 }
