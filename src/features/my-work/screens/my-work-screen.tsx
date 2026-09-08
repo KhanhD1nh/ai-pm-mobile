@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { SectionList, StyleSheet, Text, View } from 'react-native';
 import { EmptyState, Screen } from '@/shared/components/ui/screen';
 import { MotionPressable } from '@/shared/components/ui/motion';
-import type { AppTheme } from '@/shared/components/ui/theme';
+import { priorityColor, statusCategoryColor, type AppTheme } from '@/shared/components/ui/theme';
 import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { useAuth } from '@/providers/auth-provider';
@@ -52,11 +52,11 @@ export default function MyWorkScreen() {
             onPress={() => router.push({ pathname: '/issue/[identifier]', params: { identifier: issue.identifier } })}
             style={styles.item}
           >
-            <View style={[styles.statusMarker, issue.priority === 'URGENT' && styles.statusUrgent, issue.priority === 'HIGH' && styles.statusHigh]} />
+            <View style={[styles.statusMarker, { backgroundColor: statusCategoryColor(ui, issue.status?.category) }]} />
             <View style={styles.copy}>
               <View style={styles.topRow}>
                 <Text style={styles.identifier}>{issue.identifier}</Text>
-                {issue.priority !== 'MEDIUM' ? <Text style={[styles.priority, issue.priority === 'URGENT' && styles.priorityUrgent]}>{issue.priority}</Text> : null}
+                {issue.priority !== 'MEDIUM' ? <Text style={[styles.priority, { color: priorityColor(ui, issue.priority) }]}>{issue.priority}</Text> : null}
               </View>
               <Text style={styles.title} numberOfLines={2}>{issue.title}</Text>
               <View style={styles.meta}>
@@ -79,14 +79,11 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   count: { color: ui.colors.textMuted, ...ui.typography.caption },
   item: { minHeight: 84, flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 12 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border },
-  statusMarker: { width: 3, height: 44, borderRadius: 2, backgroundColor: ui.colors.success },
-  statusHigh: { backgroundColor: ui.colors.warning },
-  statusUrgent: { backgroundColor: ui.colors.danger },
+  statusMarker: { width: 3, height: 44, borderRadius: 2 },
   copy: { flex: 1, minWidth: 0, gap: 4 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   identifier: { color: ui.colors.textMuted, fontSize: 11.5, lineHeight: 15, fontWeight: '600' },
-  priority: { color: ui.colors.warning, fontSize: 10.5, lineHeight: 14, fontWeight: '600', textTransform: 'uppercase' },
-  priorityUrgent: { color: ui.colors.danger },
+  priority: { fontSize: 10.5, lineHeight: 14, fontWeight: '600', textTransform: 'uppercase' },
   title: { color: ui.colors.text, ...ui.typography.bodyStrong, fontSize: 15.5 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   status: { color: ui.colors.textSecondary, ...ui.typography.caption, fontSize: 11.5 },

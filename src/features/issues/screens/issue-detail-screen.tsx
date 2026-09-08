@@ -9,7 +9,7 @@ import { Button, Field } from '@/shared/components/ui/primitives';
 import { BottomSheet, ChoiceRow, ListGroup, ListRow, SectionHeader } from '@/shared/components/ui/mobile';
 import { MotionPressable, SoftFade } from '@/shared/components/ui/motion';
 import { LoadingScreen, Screen } from '@/shared/components/ui/screen';
-import type { AppTheme } from '@/shared/components/ui/theme';
+import { priorityColor, statusCategoryColor, type AppTheme } from '@/shared/components/ui/theme';
 import { usePullToRefresh } from '@/shared/hooks/use-pull-to-refresh';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
@@ -240,13 +240,13 @@ export default function IssueDetailScreen() {
         <Text style={styles.issueTitle}>{data.title}</Text>
         <View style={styles.quickMeta}>
           <MotionPressable accessibilityRole="button" accessibilityLabel={`${language === 'vi' ? 'Trạng thái' : 'Status'}, ${statusName}`} onPress={() => setSheet('status')} style={styles.quickMetaItem}>
-            <View style={styles.statusDot} />
+            <View style={[styles.statusDot, { backgroundColor: statusCategoryColor(ui, data.status?.category) }]} />
             <Text style={styles.quickMetaText}>{statusName}</Text>
           </MotionPressable>
           <Text style={styles.quickMetaSeparator}>·</Text>
           <MotionPressable accessibilityRole="button" accessibilityLabel={`${language === 'vi' ? 'Ưu tiên' : 'Priority'}, ${data.priority}`} onPress={() => setSheet('priority')} style={styles.quickMetaItem}>
-            <Ionicons accessible={false} name="flag-outline" size={14} color={(data.priority === 'HIGH' || data.priority === 'URGENT') ? ui.colors.warning : ui.colors.textMuted} />
-            <Text style={[styles.quickMetaText, (data.priority === 'HIGH' || data.priority === 'URGENT') && styles.quickMetaWarning]}>{data.priority}</Text>
+            <Ionicons accessible={false} name="flag-outline" size={14} color={priorityColor(ui, data.priority)} />
+            <Text style={[styles.quickMetaText, { color: priorityColor(ui, data.priority) }]}>{data.priority}</Text>
           </MotionPressable>
         </View>
       </SoftFade>
@@ -618,9 +618,8 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   quickMeta: { minHeight: 30, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7 },
   quickMetaItem: { minHeight: 30, flexDirection: 'row', alignItems: 'center', gap: 6 },
   quickMetaText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
-  quickMetaWarning: { color: ui.colors.warning },
   quickMetaSeparator: { color: ui.colors.textMuted, fontSize: 12 },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ui.colors.success },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
   textAction: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, borderRadius: 10, backgroundColor: ui.colors.accentSoft },
   textActionLabel: { color: ui.colors.accent, ...ui.typography.caption, fontWeight: '600' },
   descriptionSurface: { paddingVertical: 4, paddingHorizontal: 1 },

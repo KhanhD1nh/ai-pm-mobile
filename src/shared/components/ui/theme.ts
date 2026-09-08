@@ -51,71 +51,91 @@ const shared = {
 
 export const lightTheme = {
   colors: {
-    bg: '#FFFFFF',
+    // Keep mobile layout/radius native, but mirror the web palette from
+    // ai-pm-frontend-v2/src/styles/global.css so both clients feel like one app.
+    bg: '#F4F5F7',
     bgElevated: '#FFFFFF',
     surface: '#FFFFFF',
-    surfaceRaised: '#F2F2F7',
-    surfaceSoft: '#F7F7F9',
-    surfaceAccent: '#FFF1EA',
-    surfaceContainer: '#F0F1F3',
-    surfaceContainerHigh: '#E8EBEE',
-    primaryContainer: '#FFE1D2',
-    onPrimaryContainer: '#6E3217',
-    border: '#E7E7EC',
-    borderStrong: '#D2D2D8',
-    text: '#1D1D1F',
+    surfaceRaised: '#EBECF0',
+    surfaceSoft: '#F4F5F7',
+    surfaceAccent: '#DEEBFF',
+    surfaceContainer: '#F4F5F7',
+    surfaceContainerHigh: '#EBECF0',
+    primaryContainer: '#DEEBFF',
+    onPrimaryContainer: '#0747A6',
+    border: '#DFE1E6',
+    borderStrong: '#C1C7D0',
+    text: '#172B4D',
     inverseText: '#FFFFFF',
-    textSecondary: '#515154',
-    textMuted: '#86868B',
-    accent: '#F88751',
-    // Darker foreground accent meets contrast requirements on white while the
-    // brighter `accent` remains available for decorative fills/highlights.
-    accentStrong: '#C4511E',
-    accentSoft: '#FFF0E8',
-    success: '#779647',
-    successSoft: '#F0F5E7',
-    warning: '#D49A42',
-    warningSoft: '#FFF6E5',
-    danger: '#D95F63',
-    dangerSoft: '#FFF0F1',
-    overlay: 'rgba(24, 27, 31, 0.30)',
-    shadow: '#6A7179',
+    textSecondary: '#626F86',
+    textMuted: '#8993A5',
+    accent: '#0065FF',
+    accentStrong: '#0052CC',
+    accentSoft: '#DEEBFF',
+    success: '#36B37E',
+    successSoft: '#E3FCEF',
+    warning: '#FFAB00',
+    warningSoft: '#FFFAE6',
+    danger: '#E34935',
+    dangerSoft: '#FFEBE6',
+    priorityUrgent: '#E34935',
+    priorityHigh: '#FF7452',
+    priorityMedium: '#FFAB00',
+    priorityLow: '#0065FF',
+    statusBacklog: '#626F86',
+    statusTodo: '#42526E',
+    statusInProgress: '#0052CC',
+    statusInReview: '#6554C0',
+    statusDone: '#36B37E',
+    statusCanceled: '#8993A5',
+    overlay: 'rgba(9, 30, 66, 0.54)',
+    shadow: '#091E42',
   },
   shadow: {
-    card: { shadowColor: '#6A7179', shadowOpacity: 0.02, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 0 },
-    floating: { shadowColor: '#6A7179', shadowOpacity: 0.14, shadowRadius: 20, shadowOffset: { width: 0, height: 9 }, elevation: 5 },
+    card: { shadowColor: '#091E42', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 0 },
+    floating: { shadowColor: '#091E42', shadowOpacity: 0.18, shadowRadius: 20, shadowOffset: { width: 0, height: 9 }, elevation: 5 },
   },
   ...shared,
 } as const;
 
 export const darkTheme = {
   colors: {
-    bg: '#0B0B0D',
-    bgElevated: '#151517',
-    surface: '#1C1C1E',
-    surfaceRaised: '#2C2C2E',
-    surfaceSoft: '#171719',
-    surfaceAccent: '#34231C',
-    surfaceContainer: '#232529',
-    surfaceContainerHigh: '#2B2E33',
-    primaryContainer: '#573120',
-    onPrimaryContainer: '#FFD9C7',
-    border: '#2A2D32',
-    borderStrong: '#3A3E45',
-    text: '#F5F5F7',
-    inverseText: '#1D1D1F',
-    textSecondary: '#D1D1D6',
-    textMuted: '#8E8E93',
-    accent: '#FF9564',
-    accentStrong: '#F88751',
-    accentSoft: 'rgba(248, 135, 81, 0.16)',
-    success: '#9AB864',
-    successSoft: 'rgba(154, 184, 100, 0.14)',
-    warning: '#E3B15D',
-    warningSoft: 'rgba(227, 177, 93, 0.14)',
-    danger: '#EA7C81',
-    dangerSoft: 'rgba(234, 124, 129, 0.14)',
-    overlay: 'rgba(0, 0, 0, 0.68)',
+    bg: '#161A1D',
+    bgElevated: '#22272B',
+    surface: '#22272B',
+    surfaceRaised: '#2C333A',
+    surfaceSoft: '#161A1D',
+    surfaceAccent: '#1C2B41',
+    surfaceContainer: '#22272B',
+    surfaceContainerHigh: '#2C333A',
+    primaryContainer: '#1C2B41',
+    onPrimaryContainer: '#85B8FF',
+    border: '#444D56',
+    borderStrong: '#596773',
+    text: '#E6EDF3',
+    inverseText: '#0D1424',
+    textSecondary: '#B8C4D0',
+    textMuted: '#95A3B1',
+    accent: '#85B8FF',
+    accentStrong: '#579DFF',
+    accentSoft: '#1C2B41',
+    success: '#57D9A3',
+    successSoft: 'rgba(87, 217, 163, 0.14)',
+    warning: '#E2B203',
+    warningSoft: 'rgba(226, 178, 3, 0.14)',
+    danger: '#FD9891',
+    dangerSoft: 'rgba(253, 152, 145, 0.14)',
+    priorityUrgent: '#FD9891',
+    priorityHigh: '#FEA362',
+    priorityMedium: '#E2B203',
+    priorityLow: '#85B8FF',
+    statusBacklog: '#738496',
+    statusTodo: '#8C9BAB',
+    statusInProgress: '#579DFF',
+    statusInReview: '#9F8FEF',
+    statusDone: '#57D9A3',
+    statusCanceled: '#738496',
+    overlay: 'rgba(9, 30, 66, 0.70)',
     shadow: '#000000',
   },
   shadow: {
@@ -126,4 +146,28 @@ export const darkTheme = {
 } as const;
 
 export type AppTheme = typeof darkTheme | typeof lightTheme;
+
+export function priorityColor(theme: AppTheme, priority?: string | null) {
+  switch (priority?.toUpperCase()) {
+    case 'URGENT': return theme.colors.priorityUrgent;
+    case 'HIGH': return theme.colors.priorityHigh;
+    case 'MEDIUM': return theme.colors.priorityMedium;
+    case 'LOW': return theme.colors.priorityLow;
+    default: return theme.colors.textMuted;
+  }
+}
+
+export function statusCategoryColor(theme: AppTheme, category?: string | null) {
+  switch (category?.toUpperCase()) {
+    case 'BACKLOG': return theme.colors.statusBacklog;
+    case 'TODO': return theme.colors.statusTodo;
+    case 'IN_PROGRESS': return theme.colors.statusInProgress;
+    case 'IN_REVIEW': return theme.colors.statusInReview;
+    case 'DONE': return theme.colors.statusDone;
+    case 'REJECTED': return theme.colors.danger;
+    case 'CANCELED': return theme.colors.statusCanceled;
+    default: return theme.colors.textMuted;
+  }
+}
+
 export const ui = lightTheme;

@@ -6,7 +6,7 @@ import { Button, Field } from '@/shared/components/ui/primitives';
 import { BottomSheet, ChoiceRow, SearchBar } from '@/shared/components/ui/mobile';
 import { MotionPressable } from '@/shared/components/ui/motion';
 import { EmptyState, LoadingScreen, Screen } from '@/shared/components/ui/screen';
-import type { AppTheme } from '@/shared/components/ui/theme';
+import { priorityColor, statusCategoryColor, type AppTheme } from '@/shared/components/ui/theme';
 import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
 import { presentError } from '@/shared/errors/present-error';
 import { useDebouncedValue } from '@/shared/hooks/use-debounced-value';
@@ -119,7 +119,7 @@ export default function BoardScreen() {
         renderSectionHeader={({ section }) => (
           <View style={styles.statusHeader}>
             <View style={styles.statusHeading}>
-              <View style={styles.statusDot} />
+              <View style={[styles.statusDot, { backgroundColor: statusCategoryColor(ui, section.status.category) }]} />
               <Text style={styles.statusTitle}>{section.status.name}</Text>
               <Text style={styles.statusCount}>{section.data.length}</Text>
             </View>
@@ -142,7 +142,7 @@ export default function BoardScreen() {
               <View style={styles.metaLine}>
                 <Text style={styles.identifier}>{issue.identifier}</Text>
                 <Text style={styles.metaDot}>·</Text>
-                <Text style={[styles.metaText, (issue.priority === 'HIGH' || issue.priority === 'URGENT') && styles.priorityHigh]}>{issue.priority}</Text>
+                <Text style={[styles.metaText, { color: priorityColor(ui, issue.priority) }]}>{issue.priority}</Text>
                 {issue.due_date ? <><Text style={styles.metaDot}>·</Text><Text style={styles.metaText}>{new Date(issue.due_date).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</Text></> : null}
               </View>
             </View>
@@ -189,7 +189,7 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   resultCount: { color: ui.colors.textMuted, ...ui.typography.caption },
   statusHeader: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 4, backgroundColor: ui.colors.bg },
   statusHeading: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ui.colors.textMuted },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusTitle: { color: ui.colors.text, ...ui.typography.heading, fontSize: 16 },
   statusCount: { color: ui.colors.textMuted, ...ui.typography.caption },
   addInline: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
@@ -202,7 +202,6 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   identifier: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
   metaText: { color: ui.colors.textMuted, ...ui.typography.caption },
   metaDot: { color: ui.colors.textMuted, fontSize: 12 },
-  priorityHigh: { color: ui.colors.warning },
   assignee: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.surfaceRaised },
   assigneeText: { color: ui.colors.textSecondary, fontSize: 11, fontWeight: '600' },
   filterEmpty: { gap: 4, paddingBottom: 8 },
