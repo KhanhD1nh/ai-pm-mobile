@@ -11,6 +11,9 @@
     "unsigned-ios": {
       "channel": "internal",
       "environment": "production",
+      "env": {
+        "AI_PM_IOS_DISTRIBUTION": "esign"
+      },
       "ios": {
         "withoutCredentials": true,
         "config": "unsigned-ios.yml"

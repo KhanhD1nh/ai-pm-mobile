@@ -10,6 +10,10 @@ import type { NotificationDevice } from "@/shared/contracts";
 function assertRemotePushAvailable() {
   if (Platform.OS === "web")
     throw new Error("Push notifications chưa được hỗ trợ trên web");
+  if (Platform.OS === "ios" && env.distributionMode === "esign")
+    throw new Error(
+      "Bản iOS ký bằng ESign không bật APNs. Thông báo trong app vẫn hoạt động, nhưng push notification ngoài máy cần Apple provisioning có Push Notifications.",
+    );
   if (Constants.appOwnership === "expo")
     throw new Error(
       "Push notifications cần development build; Expo Go không hỗ trợ remote notifications trên Android",

@@ -50,10 +50,21 @@ build:
           fi
 
           echo "App: $APP_PATH"
+          echo "Checking unsigned ESign distribution configuration"
+          if /usr/libexec/PlistBuddy -c 'Print :aps-environment' "$APP_PATH/Info.plist" >/dev/null 2>&1; then
+            echo "Unexpected aps-environment key found in Info.plist"
+            exit 1
+          fi
+
+          if [ -d "$APP_PATH/_CodeSignature" ] || [ -f "$APP_PATH/embedded.mobileprovision" ]; then
+            echo "Build unexpectedly contains signing artifacts"
+            exit 1
+          fi
+
           mkdir -p ../unsigned-ipa/Payload
-          cp -R "$APP_PATH" ../unsigned-ipa/Payload/
+          /usr/bin/ditto "$APP_PATH" "../unsigned-ipa/Payload/$(basename "$APP_PATH")"
           cd ../unsigned-ipa
-          /usr/bin/zip -qry ../AI-PM-unsigned.ipa Payload
+          /usr/bin/ditto -c -k --keepParent Payload ../AI-PM-unsigned.ipa
           /usr/bin/unzip -l ../AI-PM-unsigned.ipa
 
     - eas/upload_artifact:
