@@ -1,0 +1,3 @@
+interface:
+  display_name: "AI-PM Mobile Platform"
+  short_description: "Handle Expo, native runtime, push, deep links, OTA, and releases"

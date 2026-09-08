@@ -7,6 +7,16 @@ https://docs.expo.dev/versions/v57.0.0/
 
 This repository targets Expo SDK 57. Do not assume APIs from another SDK version.
 
+## Platform/runtime work
+
+For any task that changes Expo/native runtime behavior, app configuration, dev-client behavior, push notifications, deep links, SecureStore/auth session handling, app lifecycle/background behavior, permissions, offline/network handling, ATS/TLS, Metro/Tailscale connectivity, EAS/internal distribution, OTA updates, or native release behavior, read and follow:
+
+1. `.agents/skills/ai-pm-mobile-platform/SKILL.md`
+2. the exact Expo SDK 57 documentation for the affected package or feature
+3. `docs/architecture/README.md` when the change touches infrastructure/provider boundaries
+
+Do not assume that a JavaScript/OTA update can deliver native dependency or native configuration changes. Classify the change before choosing the delivery path.
+
 ## UI/UX work
 
 For any task that changes mobile layout, navigation, typography, spacing, color, theme, Liquid Glass, loading/empty/error states, motion, gestures, haptics, accessibility, or perceived performance, read and follow:

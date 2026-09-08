@@ -79,6 +79,14 @@ On iOS 26+, treat Liquid Glass as a functional top layer for navigation and impo
 - Use elevation only to explain layering. Floating controls can float; ordinary content should not all look detached from the canvas.
 - Keep corner radii consistent with component role and nesting. Avoid arbitrary pill shapes everywhere.
 - Dark mode is a separate visual composition, not a mechanically inverted palette.
+- Treat the web app semantic palette as the product color source of truth. Before changing AI-PM Mobile colors, inspect `../ai-pm-frontend-v2/src/styles/global.css` and map web tokens such as background, foreground, card, primary, border, priority, and workflow status into mobile semantic tokens. Keep mobile layout, radii, elevation, and native interaction treatment platform-appropriate instead of copying web component styling.
+- Do not introduce a second brand palette for mobile unless the product explicitly calls for one. Shared product meaning should use the same semantic colors across web and mobile.
+
+## Native chrome and container continuity
+
+- When changing app background, theme, or navigation chrome, keep the Expo Router / React Navigation theme synchronized with the mobile theme. Root navigation `background`, `card`, `border`, `text`, `primary`, and notification colors must not fall back to the default navigation palette.
+- Verify iOS interactive back gestures, overscroll, modal dismissal, and tab transitions after theme changes. A screen-level background is not sufficient if the native navigation container can still reveal white or another default color behind it.
+- Anchor tab selection indicators to the label/content wrapper or another deterministic measured element. Do not center a fixed-width underline with fragile absolute-position hacks such as `left: 50%` when the containing width differs from the visible label.
 
 ## Motion and perceived performance
 
@@ -89,6 +97,10 @@ On iOS 26+, treat Liquid Glass as a functional top layer for navigation and impo
 - Avoid layout jumps when network data resolves.
 - Refreshing existing data should generally preserve useful stale content rather than blank the screen.
 - Respect Reduce Motion by replacing large translation/scale effects with simpler fades or immediate state changes.
+- Keep dismissing surfaces mounted until their exit transition completes. Selecting an item in a BottomSheet or Modal must not immediately unmount the container and cut off the closing animation.
+- Animate layout changes that materially change a sheet's height or content position. Calendar expansion, optional sections, and dynamic sheet content should not snap between heights while only fading child content.
+- Synchronize scrim, sheet, content, and chevron/icon state changes so a single interaction does not feel like several unrelated animations.
+- When a screen recording is available, use it as primary evidence for motion bugs. Inspect the transition frame-by-frame and distinguish mount/unmount discontinuity, layout jumps, opacity/transform timing, gesture tracking, and data-driven rerenders before changing duration or spring constants.
 
 ## State completeness
 
@@ -150,3 +162,4 @@ For implementation, finish with:
 - Read `docs/ui-ux/UI_UX_AUDIT_CHECKLIST.md` when auditing or signing off a screen.
 - Read `docs/ui-ux/RESEARCH_SOURCES.md` when current platform guidance needs verification.
 - Use `docs/ui-ux/UI_UX_AGENT_PROMPT.md` as the reusable master prompt for larger redesigns.
+- Read `references/implementation-lessons.md` when working on theme synchronization, navigation background, tabs, BottomSheets, or motion regressions that resemble previously fixed AI-PM Mobile bugs.
