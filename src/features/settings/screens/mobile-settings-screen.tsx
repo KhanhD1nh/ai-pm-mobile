@@ -17,6 +17,7 @@ export default function MobileSettingsScreen() {
     devices,
     busy,
     pushEnabled,
+    pushSupport,
     biometric,
     enablePush,
     disablePush,
@@ -46,6 +47,16 @@ export default function MobileSettingsScreen() {
         : language === "vi"
           ? "OTA chỉ khả dụng trên ứng dụng native."
           : "OTA is available only in the native app.";
+  const pushUnavailableDetail =
+    pushSupport.reason === "expo-go"
+      ? language === "vi"
+        ? "Remote push không khả dụng trong Expo Go."
+        : "Remote push is unavailable in Expo Go."
+      : pushSupport.reason === "web"
+        ? language === "vi"
+          ? "Push notifications chưa được hỗ trợ trên web."
+          : "Push notifications are not supported on web."
+        : null;
 
   const handleEnablePush = async () => {
     try {
@@ -165,9 +176,10 @@ export default function MobileSettingsScreen() {
             language === "vi" ? "Push notifications" : "Push notifications"
           }
           detail={
-            language === "vi"
-              ? "Nhận thông báo khi app đang nền hoặc đã đóng."
-              : "Receive alerts while the app is backgrounded or closed."
+            pushUnavailableDetail ??
+            (language === "vi"
+              ? "Nhận thông báo khi app đang nền hoặc đã đóng. IPA sideload cần provisioning profile có Push Notifications."
+              : "Receive alerts while the app is backgrounded or closed.")
           }
           trailing={
             Platform.OS === "ios" ? (
@@ -178,13 +190,13 @@ export default function MobileSettingsScreen() {
                     : "Enable or disable push notifications"
                 }
                 value={pushEnabled}
-                disabled={busy || devices.isLoading}
+                disabled={busy || devices.isLoading || !pushSupport.supported}
                 onValueChange={(value) => void handlePushToggle(value)}
               />
             ) : (
               <Button
                 title={busy ? "…" : language === "vi" ? "Bật" : "Enable"}
-                disabled={busy || Platform.OS === "web"}
+                disabled={busy || !pushSupport.supported}
                 onPress={() => void handleEnablePush()}
               />
             )

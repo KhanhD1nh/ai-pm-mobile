@@ -7,6 +7,7 @@ import {
   setCurrentPushDeviceId,
 } from "@/infrastructure/push/push-device-storage";
 import {
+  getRemotePushSupport,
   registerForPushNotifications,
   resolveCurrentPushDevice,
   syncAppBadge,
@@ -59,6 +60,7 @@ export function useMobileSettings() {
     [currentPushDeviceId, devices.data],
   );
   const pushEnabled = currentPushDevice?.enabled ?? false;
+  const pushSupport = getRemotePushSupport();
 
   useEffect(() => {
     let active = true;
@@ -171,6 +173,7 @@ export function useMobileSettings() {
     devices,
     busy,
     pushEnabled,
+    pushSupport,
     biometric,
     enablePush,
     disablePush,

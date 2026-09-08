@@ -13,7 +13,6 @@ import {
   routeFromNotificationData,
   syncAppBadge,
 } from "@/infrastructure/push/push-service";
-import { env } from "@/config/env";
 
 export function NotificationBootstrap() {
   const { ready, user, orgId, selectOrganization } = useAuth();
@@ -24,7 +23,6 @@ export function NotificationBootstrap() {
   useEffect(() => {
     if (!ready || !userId) return;
     if (Platform.OS === "web" || Constants.appOwnership === "expo") return;
-    if (Platform.OS === "ios" && env.distributionMode === "esign") return;
 
     let received: { remove(): void } | undefined;
     let opened: { remove(): void } | undefined;

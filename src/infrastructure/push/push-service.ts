@@ -7,14 +7,24 @@ import { setCurrentPushDeviceId } from "@/infrastructure/push/push-device-storag
 import { request } from "@/infrastructure/networking/api-client";
 import type { NotificationDevice } from "@/shared/contracts";
 
+export type RemotePushSupport = {
+  supported: boolean;
+  reason: "web" | "expo-go" | null;
+};
+
+export function getRemotePushSupport(): RemotePushSupport {
+  if (Platform.OS === "web") return { supported: false, reason: "web" };
+  if (Constants.appOwnership === "expo")
+    return { supported: false, reason: "expo-go" };
+  return { supported: true, reason: null };
+}
+
 function assertRemotePushAvailable() {
+  const support = getRemotePushSupport();
+  if (support.supported) return;
   if (Platform.OS === "web")
     throw new Error("Push notifications chưa được hỗ trợ trên web");
-  if (Platform.OS === "ios" && env.distributionMode === "esign")
-    throw new Error(
-      "Bản iOS ký bằng ESign không bật APNs. Thông báo trong app vẫn hoạt động, nhưng push notification ngoài máy cần Apple provisioning có Push Notifications.",
-    );
-  if (Constants.appOwnership === "expo")
+  if (support.reason === "expo-go")
     throw new Error(
       "Push notifications cần development build; Expo Go không hỗ trợ remote notifications trên Android",
     );
@@ -55,7 +65,24 @@ export async function registerForPushNotifications() {
     Constants.expoConfig?.extra?.eas?.projectId;
   if (!projectId)
     throw new Error("Thiếu EAS projectId để đăng ký Expo Push Token");
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  let token: string;
+  try {
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error ?? "");
+    if (
+      Platform.OS === "ios" &&
+      /aps-environment|remote notifications|push notification entitlement/i.test(
+        message,
+      )
+    ) {
+      throw new Error(
+        "IPA hiện tại chưa được ký bằng provisioning profile có Push Notifications (aps-environment). Hãy ký lại bằng App ID explicit có APNs rồi cài lại app.",
+      );
+    }
+    throw error;
+  }
   const device = await pushApi.registerDevice({
     platform: Platform.OS === "ios" ? "IOS" : "ANDROID",
     pushProvider: "EXPO",

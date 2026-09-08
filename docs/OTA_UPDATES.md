@@ -16,6 +16,8 @@ pnpm run build:unsigned:ios
 
 The `unsigned-ios` workflow compiles the app with Xcode's **Release** configuration and points it at the `internal` EAS Update channel. Do not change it back to a Debug/development-client build: Expo documents that most of the Updates API is unavailable in development builds.
 
+The unsigned IPA also keeps the native `expo-notifications` capability and declares `aps-environment=production` for the ESign profile. Sideloading does not inherently disable push notifications. When signing/re-signing the IPA, use an **explicit App ID** and a distribution provisioning profile whose entitlements include `aps-environment=production`/Push Notifications. If the signer changes the bundle identifier or Apple team, the APNs/Expo push credentials used by the backend must match that signed app identity as well.
+
 ### Signed internal IPA
 
 Use this when EAS/Apple credentials are available:
