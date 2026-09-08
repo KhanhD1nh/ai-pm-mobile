@@ -184,16 +184,16 @@ export default function MilestonesScreen() {
           : "Track project goals and health"
       }
     >
-      <View style={styles.headerRow}>
-        <SectionHeader
-          title={language === "vi" ? "Mục tiêu dự án" : "Project goals"}
-          caption={`${milestones.data?.length ?? 0}`}
-        />
-        <Button
-          title={language === "vi" ? "Tạo" : "New"}
-          onPress={() => setCreateOpen(true)}
-        />
-      </View>
+      <SectionHeader
+        title={language === "vi" ? "Mục tiêu dự án" : "Project goals"}
+        caption={`${milestones.data?.length ?? 0}`}
+        right={
+          <Button
+            title={language === "vi" ? "Tạo" : "New"}
+            onPress={() => setCreateOpen(true)}
+          />
+        }
+      />
       {milestones.isError ? (
         <ErrorState
           title={
@@ -366,12 +366,6 @@ export default function MilestonesScreen() {
 
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
-    headerRow: {
-      flexDirection: "row",
-      alignItems: "flex-end",
-      justifyContent: "space-between",
-      gap: 12,
-    },
     list: { overflow: "hidden" },
     row: {
       minHeight: 82,

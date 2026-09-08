@@ -133,16 +133,16 @@ export default function CyclesScreen() {
           : "Plan work in focused iterations"
       }
     >
-      <View style={styles.headerRow}>
-        <SectionHeader
-          title={language === "vi" ? "Tất cả chu kỳ" : "All cycles"}
-          caption={`${cycles.data?.length ?? 0}`}
-        />
-        <Button
-          title={language === "vi" ? "Tạo" : "New"}
-          onPress={() => setCreateOpen(true)}
-        />
-      </View>
+      <SectionHeader
+        title={language === "vi" ? "Tất cả chu kỳ" : "All cycles"}
+        caption={`${cycles.data?.length ?? 0}`}
+        right={
+          <Button
+            title={language === "vi" ? "Tạo" : "New"}
+            onPress={() => setCreateOpen(true)}
+          />
+        }
+      />
       {cycles.isError ? (
         <ErrorState
           title={
@@ -356,12 +356,6 @@ export default function CyclesScreen() {
 
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
-    headerRow: {
-      flexDirection: "row",
-      alignItems: "flex-end",
-      justifyContent: "space-between",
-      gap: 12,
-    },
     list: { overflow: "hidden" },
     row: {
       minHeight: 78,
