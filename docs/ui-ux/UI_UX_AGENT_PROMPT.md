@@ -119,6 +119,7 @@ Explicitly cover:
 - error/retry
 - offline/degraded state if relevant
 - disabled/permission-limited state
+- authorization-limited navigation: hide actions and destinations the current user cannot access instead of showing a dead-end screen after tap; keep backend authorization as the final security boundary
 - destructive confirmation
 - keyboard open/closed
 - long text/localization

@@ -97,7 +97,7 @@ export default function MoreScreen() {
       <ListGroup>
         <ListRow first icon="business-outline" label={t('more.organization')} detail={t('more.organizationDetail')} onPress={() => router.push('/settings/organization')} />
         <ListRow icon="wallet-outline" label={t('more.aiBudget')} detail={t('more.aiBudgetDetail')} onPress={() => router.push('/settings/ai-budget')} />
-        <ListRow icon="people-outline" label={t('more.systemUsers')} detail={t('more.systemUsersDetail')} onPress={() => router.push('/settings/users')} />
+        {isSystemOwner ? <ListRow icon="people-outline" label={t('more.systemUsers')} detail={t('more.systemUsersDetail')} onPress={() => router.push('/settings/users')} /> : null}
         {isSystemOwner ? <ListRow icon="paper-plane-outline" label="Telegram Bot" detail={language === 'vi' ? 'Token, trạng thái và webhook hệ thống' : 'System bot token, status, and webhook'} onPress={() => router.push('/settings/telegram-admin' as never)} /> : null}
       </ListGroup>
 
