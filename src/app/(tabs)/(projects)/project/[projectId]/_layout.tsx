@@ -1,1 +1,1 @@
-export { default } from '@/features/projects/screens/project-workspace-layout';
+export { default } from "@/features/projects/screens/project-stack-layout";

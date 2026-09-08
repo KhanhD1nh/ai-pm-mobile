@@ -36,7 +36,7 @@ export default function ProjectHomeScreen() {
   const active = totals?.in_progress ?? 0;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
   const go = (route: string) =>
-    router.navigate(`/project/${projectId}/${route}` as never);
+    router.push(`/project/${projectId}/${route}` as never);
   const alerts = report.data?.alerts ?? [];
   const healthy = alerts.length === 0;
 
