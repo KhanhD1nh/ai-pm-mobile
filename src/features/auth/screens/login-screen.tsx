@@ -1,6 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   AppState,
   Keyboard,
   KeyboardAvoidingView,
@@ -21,14 +22,98 @@ import {
 } from "@/shared/components/ui/motion";
 import type { AppTheme } from "@/shared/components/ui/theme";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
+import { normalizeError } from "@/shared/errors/app-error";
 import { presentError } from "@/shared/errors/present-error";
 import { useAuth } from "@/providers/auth-provider";
 import { useSetupStatus } from "../queries/use-setup-status";
 import { useTelegramConfig } from "../public";
-import { sessionStorage } from '@/infrastructure/auth/session-storage';
+import { sessionStorage } from "@/infrastructure/auth/session-storage";
+
+type TelegramLoginFailure = "network" | "expired" | "open" | "unavailable";
+
+function waitForDelay(ms: number, signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+
+    let timeout: ReturnType<typeof setTimeout>;
+    const finish = () => {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    };
+
+    timeout = setTimeout(finish, ms);
+    signal.addEventListener("abort", finish, { once: true });
+  });
+}
+
+function waitForAppToBecomeActive(signal: AbortSignal) {
+  if (signal.aborted || AppState.currentState === "active")
+    return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    let subscription: ReturnType<typeof AppState.addEventListener> | null =
+      null;
+    const finish = () => {
+      subscription?.remove();
+      signal.removeEventListener("abort", finish);
+      resolve();
+    };
+
+    subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") finish();
+    });
+    signal.addEventListener("abort", finish, { once: true });
+  });
+}
+
+function presentTelegramLoginFailure(
+  language: "vi" | "en",
+  failure: TelegramLoginFailure,
+  retry: () => void,
+) {
+  const vi = language === "vi";
+  const copy = {
+    network: {
+      title: vi ? "Không thể kết nối" : "Could not connect",
+      message: vi
+        ? "Kết nối mạng bị gián đoạn khi đăng nhập Telegram. Kiểm tra Internet rồi thử lại."
+        : "The network connection was interrupted while signing in with Telegram. Check your Internet connection and try again.",
+    },
+    expired: {
+      title: vi ? "Yêu cầu đã hết hạn" : "Request expired",
+      message: vi
+        ? "Yêu cầu đăng nhập Telegram đã hết hạn. Hãy tạo yêu cầu mới và thử lại."
+        : "The Telegram sign-in request expired. Create a new request and try again.",
+    },
+    open: {
+      title: vi ? "Không thể mở Telegram" : "Could not open Telegram",
+      message: vi
+        ? "Không thể mở liên kết đăng nhập Telegram. Kiểm tra Telegram hoặc trình duyệt trên thiết bị rồi thử lại."
+        : "The Telegram sign-in link could not be opened. Check Telegram or your browser and try again.",
+    },
+    unavailable: {
+      title: vi
+        ? "Telegram tạm thời không khả dụng"
+        : "Telegram is temporarily unavailable",
+      message: vi
+        ? "AI-PM chưa thể hoàn tất đăng nhập bằng Telegram. Vui lòng thử lại sau."
+        : "AI-PM could not complete Telegram sign-in. Please try again shortly.",
+    },
+  }[failure];
+
+  Alert.alert(copy.title, copy.message, [
+    { text: vi ? "Đóng" : "Close", style: "cancel" },
+    { text: vi ? "Thử lại" : "Try again", onPress: retry },
+  ]);
+}
 
 export default function LoginScreen() {
-  const { login, signup, user, beginTelegramLogin, pollTelegramLogin } = useAuth();
+  const { login, signup, user, beginTelegramLogin, pollTelegramLogin } =
+    useAuth();
   const {
     theme: ui,
     language,
@@ -56,9 +141,11 @@ export default function LoginScreen() {
     void sessionStorage.getPendingDestination().then(async (destination) => {
       if (cancelled) return;
       if (destination) await sessionStorage.clearPendingDestination();
-      router.replace((destination || '/home') as never);
+      router.replace((destination || "/home") as never);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   const submit = async () => {
@@ -77,27 +164,77 @@ export default function LoginScreen() {
     }
   };
 
-  const telegramSignIn = async () => {
+  const telegramSignIn = async (): Promise<void> => {
     telegramAbortRef.current?.abort();
     const controller = new AbortController();
     telegramAbortRef.current = controller;
     setTelegramLoading(true);
+    let phase: "nonce" | "open" | "poll" = "nonce";
+    let expiryTimer: ReturnType<typeof setTimeout> | null = null;
     try {
       const { nonce, deepLink, expiresIn } = await beginTelegramLogin();
       if (controller.signal.aborted) return;
+      phase = "open";
       await Linking.openURL(deepLink);
-      const deadline = Date.now() + expiresIn * 1000;
-      while (!controller.signal.aborted && Date.now() < deadline) {
-        const approved = await pollTelegramLogin(nonce, controller.signal);
+      phase = "poll";
+      let expired = false;
+      expiryTimer = setTimeout(() => {
+        expired = true;
+      }, expiresIn * 1000);
+      let consecutiveNetworkErrors = 0;
+
+      // Give iOS/Android enough time to hand the user over to Telegram. Polling
+      // while the app is backgrounding can make the native fetch implementation
+      // fail with "The network connection was lost" even on a healthy network.
+      await waitForDelay(450, controller.signal);
+      while (!controller.signal.aborted && !expired) {
+        await waitForAppToBecomeActive(controller.signal);
+        if (controller.signal.aborted || expired) break;
+
+        let approved = false;
+        try {
+          approved = await pollTelegramLogin(nonce, controller.signal);
+          consecutiveNetworkErrors = 0;
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          const normalized = normalizeError(error);
+          if (normalized.code !== "NETWORK_ERROR") throw error;
+
+          // If the request was interrupted exactly while the app moved to the
+          // background, wait for foreground instead of surfacing a false error.
+          if (AppState.currentState !== "active") continue;
+
+          consecutiveNetworkErrors += 1;
+          if (consecutiveNetworkErrors >= 3) throw error;
+          await waitForDelay(1200, controller.signal);
+          continue;
+        }
+
         if (approved) return;
-        await new Promise<void>((resolve) => setTimeout(resolve, AppState.currentState === 'active' ? 1800 : 3500));
+        await waitForDelay(1800, controller.signal);
       }
       if (controller.signal.aborted) return;
-      presentError(t('login.signInFailed'), new Error(language === 'vi' ? 'Yêu cầu đăng nhập Telegram đã hết hạn.' : 'Telegram sign-in request expired.'));
+      presentTelegramLoginFailure(
+        language,
+        "expired",
+        () => void telegramSignIn(),
+      );
     } catch (error) {
       if (controller.signal.aborted) return;
-      presentError(t('login.signInFailed'), error);
+      const normalized = normalizeError(error);
+      const failure: TelegramLoginFailure =
+        phase === "open"
+          ? "open"
+          : normalized.code === "NETWORK_ERROR"
+            ? "network"
+            : "unavailable";
+      presentTelegramLoginFailure(
+        language,
+        failure,
+        () => void telegramSignIn(),
+      );
     } finally {
+      if (expiryTimer) clearTimeout(expiryTimer);
       if (telegramAbortRef.current === controller) {
         telegramAbortRef.current = null;
         setTelegramLoading(false);
@@ -128,9 +265,14 @@ export default function LoginScreen() {
               >
                 <Text style={styles.utilityText}>{language.toUpperCase()}</Text>
               </MotionPressable>
-              <MotionPressable onPress={toggleTheme} style={styles.utilityButton}>
+              <MotionPressable
+                onPress={toggleTheme}
+                style={styles.utilityButton}
+              >
                 <Ionicons
-                  name={resolvedTheme === "dark" ? "sunny-outline" : "moon-outline"}
+                  name={
+                    resolvedTheme === "dark" ? "sunny-outline" : "moon-outline"
+                  }
                   size={17}
                   color={ui.colors.textSecondary}
                 />
@@ -146,7 +288,9 @@ export default function LoginScreen() {
               <FadeInView style={styles.intro}>
                 <Text style={styles.eyebrow}>AI-PM MOBILE</Text>
                 <Text style={styles.title}>
-                  {initialSetup ? t("login.setupTitle") : t("login.welcomeBack")}
+                  {initialSetup
+                    ? t("login.setupTitle")
+                    : t("login.welcomeBack")}
                 </Text>
                 <Text style={styles.body}>
                   {initialSetup ? t("login.setupBody") : t("login.signInBody")}
@@ -163,7 +307,9 @@ export default function LoginScreen() {
                     />
                   </View>
                   <Text style={styles.formTitle}>
-                    {initialSetup ? t("login.setupInfo") : t("login.secureSignIn")}
+                    {initialSetup
+                      ? t("login.setupInfo")
+                      : t("login.secureSignIn")}
                   </Text>
                 </View>
                 <View style={styles.form}>
@@ -210,11 +356,21 @@ export default function LoginScreen() {
                     <>
                       <View style={styles.dividerRow}>
                         <View style={styles.divider} />
-                        <Text style={styles.dividerText}>{language === 'vi' ? 'hoặc' : 'or'}</Text>
+                        <Text style={styles.dividerText}>
+                          {language === "vi" ? "hoặc" : "or"}
+                        </Text>
                         <View style={styles.divider} />
                       </View>
                       <Button
-                        title={telegramLoading ? (language === 'vi' ? 'Đang chờ Telegram…' : 'Waiting for Telegram…') : (language === 'vi' ? 'Tiếp tục với Telegram' : 'Continue with Telegram')}
+                        title={
+                          telegramLoading
+                            ? language === "vi"
+                              ? "Đang kết nối Telegram…"
+                              : "Connecting to Telegram…"
+                            : language === "vi"
+                              ? "Tiếp tục với Telegram"
+                              : "Continue with Telegram"
+                        }
                         disabled={loading || telegramLoading}
                         onPress={() => void telegramSignIn()}
                       />
@@ -224,7 +380,9 @@ export default function LoginScreen() {
               </FadeInView>
 
               <SoftFade delay={120}>
-                <Text style={styles.footer}>Secure workspace access · AI-PM</Text>
+                <Text style={styles.footer}>
+                  Secure workspace access · AI-PM
+                </Text>
               </SoftFade>
             </View>
           </KeyboardAvoidingView>
@@ -323,8 +481,17 @@ const createStyles = (ui: AppTheme) =>
     },
     formTitle: { color: ui.colors.text, ...ui.typography.bodyStrong },
     form: { gap: 11 },
-    dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
-    divider: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: ui.colors.border },
+    dividerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 2,
+    },
+    divider: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: ui.colors.border,
+    },
     dividerText: { color: ui.colors.textMuted, ...ui.typography.caption },
     footer: {
       color: ui.colors.textMuted,
