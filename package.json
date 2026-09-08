@@ -40,7 +40,9 @@
     "eslint": "9.39.5",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "lint-staged": "^17.5.0",
+    "prettier": "^3.9.6"
   },
   "scripts": {
     "start": "expo start",
@@ -54,7 +56,10 @@
     "test": "vitest run",
     "check:architecture": "node scripts/check-architecture.mjs",
     "verify": "pnpm run check:architecture && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm dlx expo-doctor",
-    "verify:release": "pnpm run verify && pnpm exec expo export --platform ios --output-dir .dist-ios-test && pnpm exec expo export --platform android --output-dir .dist-android-test"
+    "verify:release": "pnpm run verify && pnpm exec expo export --platform ios --output-dir .dist-ios-test && pnpm exec expo export --platform android --output-dir .dist-android-test",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore",
+    "precommit": "lint-staged && pnpm run lint && pnpm run typecheck"
   },
   "engines": {
     "node": ">=22 <23"
@@ -65,5 +70,8 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,md,yml,yaml}": "prettier --write"
   }
 }

@@ -1,0 +1,3 @@
+interface:
+  display_name: "AI-PM Mobile Pre-commit"
+  short_description: "Format, verify, and safely commit AI-PM Mobile changes"

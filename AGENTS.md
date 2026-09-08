@@ -41,6 +41,12 @@ Mandatory boundaries:
 
 ## Required verification
 
+For any task that commits code, prepares a commit, runs pre-commit checks, or formats code before commit, read and follow:
+
+1. `.agents/skills/ai-pm-mobile-precommit/SKILL.md`
+
+This skill is part of the project operating prompt. Its staged-file formatting workflow must run before the repository verification gate below.
+
 Before committing application changes run:
 
 ```bash
