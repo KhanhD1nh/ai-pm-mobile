@@ -1,16 +1,20 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { Platform, StatusBar } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppProviders } from '@/providers/app-providers';
-import { NotificationBootstrap } from '@/providers/runtime/notification-bootstrap';
-import { RealtimeBootstrap } from '@/providers/runtime/realtime-bootstrap';
-import { AppLockBootstrap } from '@/providers/runtime/app-lock-bootstrap';
-import { DeepLinkBootstrap } from '@/providers/runtime/deep-link-bootstrap';
-import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { Platform, StatusBar } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AppProviders } from "@/providers/app-providers";
+import { NotificationBootstrap } from "@/providers/runtime/notification-bootstrap";
+import { RealtimeBootstrap } from "@/providers/runtime/realtime-bootstrap";
+import { AppLockBootstrap } from "@/providers/runtime/app-lock-bootstrap";
+import { DeepLinkBootstrap } from "@/providers/runtime/deep-link-bootstrap";
+import { UpdateBootstrap } from "@/providers/runtime/update-bootstrap";
+import { CrashReportingBootstrap } from "@/providers/runtime/crash-reporting-bootstrap";
+import { OfflineMutationBootstrap } from "@/providers/runtime/offline-mutation-bootstrap";
+import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 
 function AppShell() {
   const { resolvedTheme, theme } = useAppPreferences();
-  const baseNavigationTheme = resolvedTheme === 'dark' ? DarkTheme : DefaultTheme;
+  const baseNavigationTheme =
+    resolvedTheme === "dark" ? DarkTheme : DefaultTheme;
   const navigationTheme = {
     ...baseNavigationTheme,
     colors: {
@@ -27,10 +31,13 @@ function AppShell() {
   return (
     <ThemeProvider value={navigationTheme}>
       <StatusBar
-        barStyle={resolvedTheme === 'dark' ? 'light-content' : 'dark-content'}
-        translucent={Platform.OS === 'android'}
+        barStyle={resolvedTheme === "dark" ? "light-content" : "dark-content"}
+        translucent={Platform.OS === "android"}
         backgroundColor="transparent"
       />
+      <UpdateBootstrap />
+      <CrashReportingBootstrap />
+      <OfflineMutationBootstrap />
       <NotificationBootstrap />
       <DeepLinkBootstrap />
       <RealtimeBootstrap />
@@ -39,12 +46,12 @@ function AppShell() {
           headerShown: false,
           contentStyle: { backgroundColor: theme.colors.bg },
           gestureEnabled: true,
-          fullScreenGestureEnabled: Platform.OS === 'ios',
-          animationMatchesGesture: Platform.OS === 'ios',
-          animation: Platform.OS === 'ios' ? 'default' : 'fade_from_bottom',
+          fullScreenGestureEnabled: Platform.OS === "ios",
+          animationMatchesGesture: Platform.OS === "ios",
+          animation: Platform.OS === "ios" ? "default" : "fade_from_bottom",
         }}
       >
-        <Stack.Screen name="login" options={{ animation: 'fade' }} />
+        <Stack.Screen name="login" options={{ animation: "fade" }} />
       </Stack>
       <AppLockBootstrap />
     </ThemeProvider>

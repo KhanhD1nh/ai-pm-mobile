@@ -1,11 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
-import { authApi } from '@/features/auth/public';
-import { organizationsApi } from '@/features/organizations/public';
-import { sessionStorage } from '@/infrastructure/auth/session-storage';
-import { queryPersister } from '@/infrastructure/persistence/query-persister';
-import type { AuthResponse, Organization, User } from '@/shared/contracts';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from "react";
+import { router } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { authApi } from "@/features/auth/public";
+import { organizationsApi } from "@/features/organizations/public";
+import { sessionStorage } from "@/infrastructure/auth/session-storage";
+import { clearOfflineMutationQueue } from "@/infrastructure/persistence/offline-mutation-queue";
+import { queryPersister } from "@/infrastructure/persistence/query-persister";
+import type { AuthResponse, Organization, User } from "@/shared/contracts";
 
 type AuthState = {
   ready: boolean;
@@ -13,7 +22,11 @@ type AuthState = {
   organizations: Organization[];
   orgId: string | null;
   login: (email: string, password: string) => Promise<void>;
-  beginTelegramLogin: () => Promise<{ nonce: string; deepLink: string; expiresIn: number }>;
+  beginTelegramLogin: () => Promise<{
+    nonce: string;
+    deepLink: string;
+    expiresIn: number;
+  }>;
   pollTelegramLogin: (nonce: string, signal?: AbortSignal) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -38,23 +51,34 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let cancelled = false;
 
-    void sessionStorage.getToken()
+    void sessionStorage
+      .getToken()
       .then(async (token) => {
         if (!token) {
           await clearAccountCache();
-          return { user: null, organizations: [] as Organization[], orgId: null as string | null };
+          return {
+            user: null,
+            organizations: [] as Organization[],
+            orgId: null as string | null,
+          };
         }
         const me = await authApi.me();
+        await sessionStorage.setUserId(me.id);
         const orgs = await organizationsApi.list();
         const savedOrg = await sessionStorage.getOrgId();
-        const validOrg = orgs.find((org) => org.id === savedOrg)?.id ?? orgs[0]?.id ?? null;
+        const validOrg =
+          orgs.find((org) => org.id === savedOrg)?.id ?? orgs[0]?.id ?? null;
         if (validOrg) await sessionStorage.setOrgId(validOrg);
         return { user: me, organizations: orgs, orgId: validOrg };
       })
       .catch(async () => {
         await sessionStorage.clear();
         await clearAccountCache();
-        return { user: null, organizations: [] as Organization[], orgId: null as string | null };
+        return {
+          user: null,
+          organizations: [] as Organization[],
+          orgId: null as string | null,
+        };
       })
       .then((state) => {
         if (cancelled) return;
@@ -64,7 +88,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setReady(true);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [clearAccountCache]);
 
   const refreshOrganizations = useCallback(async () => {
@@ -73,53 +99,79 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (orgId && !orgs.some((org) => org.id === orgId)) {
       const next = orgs[0]?.id ?? null;
       setOrgId(next);
-      if (next) await sessionStorage.setOrgId(next); else await sessionStorage.clearOrgId();
+      if (next) await sessionStorage.setOrgId(next);
+      else await sessionStorage.clearOrgId();
     }
   }, [orgId]);
 
-  const establishSession = useCallback(async (response: AuthResponse) => {
-    await clearAccountCache();
-    await sessionStorage.setToken(response.token);
-    const orgs = await organizationsApi.list();
-    const savedOrg = await sessionStorage.getOrgId();
-    const next = orgs.find((org) => org.id === savedOrg)?.id ?? orgs[0]?.id ?? null;
-    if (next) await sessionStorage.setOrgId(next); else await sessionStorage.clearOrgId();
-    setUser(response.user);
-    setOrganizations(orgs);
-    setOrgId(next);
-  }, [clearAccountCache]);
+  const establishSession = useCallback(
+    async (response: AuthResponse) => {
+      await clearAccountCache();
+      await sessionStorage.setToken(response.token);
+      await sessionStorage.setUserId(response.user.id);
+      const orgs = await organizationsApi.list();
+      const savedOrg = await sessionStorage.getOrgId();
+      const next =
+        orgs.find((org) => org.id === savedOrg)?.id ?? orgs[0]?.id ?? null;
+      if (next) await sessionStorage.setOrgId(next);
+      else await sessionStorage.clearOrgId();
+      setUser(response.user);
+      setOrganizations(orgs);
+      setOrgId(next);
+    },
+    [clearAccountCache],
+  );
 
-  const login = useCallback(async (email: string, password: string) => {
-    if (__DEV__) console.log('[AUTH] login:start', { email });
-    const response = await authApi.login(email, password);
-    if (__DEV__) console.log('[AUTH] login:api-success', { userId: response.user.id });
-    await establishSession(response);
-  }, [establishSession]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      if (__DEV__) console.log("[AUTH] login:start", { email });
+      const response = await authApi.login(email, password);
+      if (__DEV__)
+        console.log("[AUTH] login:api-success", { userId: response.user.id });
+      await establishSession(response);
+    },
+    [establishSession],
+  );
 
-  const signup = useCallback(async (name: string, email: string, password: string) => {
-    if (__DEV__) console.log('[AUTH] signup:start', { email });
-    const response = await authApi.signup(name, email, password);
-    if (__DEV__) console.log('[AUTH] signup:api-success', { userId: response.user.id });
-    await establishSession(response);
-  }, [establishSession]);
+  const signup = useCallback(
+    async (name: string, email: string, password: string) => {
+      if (__DEV__) console.log("[AUTH] signup:start", { email });
+      const response = await authApi.signup(name, email, password);
+      if (__DEV__)
+        console.log("[AUTH] signup:api-success", { userId: response.user.id });
+      await establishSession(response);
+    },
+    [establishSession],
+  );
 
-  const beginTelegramLogin = useCallback(() => authApi.telegramLoginNonce(), []);
+  const beginTelegramLogin = useCallback(
+    () => authApi.telegramLoginNonce(),
+    [],
+  );
 
-  const pollTelegramLogin = useCallback(async (nonce: string, signal?: AbortSignal) => {
-    const result = await authApi.telegramLoginPoll(nonce, signal);
-    if (!result.approved || !result.token || !result.user) return false;
-    await establishSession({ token: result.token, user: result.user });
-    return true;
-  }, [establishSession]);
+  const pollTelegramLogin = useCallback(
+    async (nonce: string, signal?: AbortSignal) => {
+      const result = await authApi.telegramLoginPoll(nonce, signal);
+      if (!result.approved || !result.token || !result.user) return false;
+      await establishSession({ token: result.token, user: result.user });
+      return true;
+    },
+    [establishSession],
+  );
 
   const logout = useCallback(async () => {
-    try { await authApi.logout(); } catch { /* token may already be expired */ }
+    try {
+      await authApi.logout();
+    } catch {
+      /* token may already be expired */
+    }
     await sessionStorage.clear();
+    await clearOfflineMutationQueue();
     await clearAccountCache();
     setUser(null);
     setOrganizations([]);
     setOrgId(null);
-    router.replace('/login');
+    router.replace("/login");
   }, [clearAccountCache]);
 
   const selectOrganization = useCallback(async (nextOrgId: string) => {
@@ -127,26 +179,40 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setOrgId(nextOrgId);
   }, []);
 
-  const value = useMemo<AuthState>(() => ({
-    ready,
-    user,
-    organizations,
-    orgId,
-    login,
-    beginTelegramLogin,
-    pollTelegramLogin,
-    signup,
-    logout,
-    selectOrganization,
-    refreshOrganizations,
-  }), [ready, user, organizations, orgId, login, beginTelegramLogin, pollTelegramLogin, signup, logout, selectOrganization, refreshOrganizations]);
+  const value = useMemo<AuthState>(
+    () => ({
+      ready,
+      user,
+      organizations,
+      orgId,
+      login,
+      beginTelegramLogin,
+      pollTelegramLogin,
+      signup,
+      logout,
+      selectOrganization,
+      refreshOrganizations,
+    }),
+    [
+      ready,
+      user,
+      organizations,
+      orgId,
+      login,
+      beginTelegramLogin,
+      pollTelegramLogin,
+      signup,
+      logout,
+      selectOrganization,
+      refreshOrganizations,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const value = useContext(AuthContext);
-  if (!value) throw new Error('useAuth must be used inside AuthProvider');
+  if (!value) throw new Error("useAuth must be used inside AuthProvider");
   return value;
 }
-

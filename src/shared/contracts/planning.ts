@@ -6,9 +6,10 @@ export interface Cycle {
   description?: string | null;
   start_date: string;
   end_date: string;
-  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED';
+  status: "UPCOMING" | "ACTIVE" | "COMPLETED";
   created_at: string;
   issue_count?: number;
+  done_count?: number;
 }
 
 export interface Milestone {
@@ -18,7 +19,7 @@ export interface Milestone {
   description?: string | null;
   start_date?: string | null;
   target_date: string;
-  status: 'OPEN' | 'COMPLETED' | 'CANCELED';
+  status: "OPEN" | "COMPLETED" | "CANCELED";
   health_status: string;
   health_updated_at?: string | null;
   last_evaluated_by: string;

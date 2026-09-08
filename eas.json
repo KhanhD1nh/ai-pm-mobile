@@ -9,19 +9,28 @@
       "distribution": "internal"
     },
     "unsigned-ios": {
-      "developmentClient": true,
+      "channel": "internal",
+      "environment": "production",
       "ios": {
         "withoutCredentials": true,
         "config": "unsigned-ios.yml"
       }
     },
+    "internal-ios": {
+      "distribution": "internal",
+      "channel": "internal",
+      "environment": "production"
+    },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "channel": "production",
+      "environment": "production",
       "autoIncrement": true
     }
   }

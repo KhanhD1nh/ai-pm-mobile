@@ -2,11 +2,20 @@
   "expo": {
     "name": "AI-PM",
     "slug": "ai-pm-mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aipm",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/06bd8755-8cc2-4f89-b9be-48e6c91a144a",
+      "enabled": true,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
       "bundleIdentifier": "com.aipm.mobile",
       "supportsTablet": false,

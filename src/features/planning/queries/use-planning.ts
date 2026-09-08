@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { issuesApi } from '@/features/issues/public';
-import { projectsApi, projectKeys } from '@/features/projects/public';
-import { planningApi } from '../api/planning-api';
-import { planningKeys } from '../query-keys';
+import { useQuery } from "@tanstack/react-query";
+import { issuesApi } from "@/features/issues/public";
+import { projectsApi, projectKeys } from "@/features/projects/public";
+import { planningApi } from "../api/planning-api";
+import { planningKeys } from "../query-keys";
 
 export function usePlanning(projectId?: string | null) {
   const project = useQuery({
@@ -36,7 +36,11 @@ export function usePlanning(projectId?: string | null) {
     scheduled,
     refreshing: cycles.isRefetching || milestones.isRefetching,
     refresh: async () => {
-      await Promise.all([cycles.refetch(), milestones.refetch(), issues.refetch()]);
+      await Promise.all([
+        cycles.refetch(),
+        milestones.refetch(),
+        issues.refetch(),
+      ]);
     },
   };
 }
@@ -45,6 +49,45 @@ export function useProjectCycles(projectId?: string | null) {
   return useQuery({
     queryKey: planningKeys.cycles(projectId),
     queryFn: () => planningApi.cycles(projectId!),
+    enabled: !!projectId,
+  });
+}
+
+export function useCycleIssues(
+  projectId?: string | null,
+  cycleId?: string | null,
+) {
+  return useQuery({
+    queryKey: planningKeys.cycleIssues(projectId, cycleId),
+    queryFn: () =>
+      issuesApi.list({
+        projectId: projectId!,
+        cycleId: cycleId!,
+        limit: 100,
+        offset: 0,
+      }),
+    enabled: !!projectId && !!cycleId,
+  });
+}
+
+export function useBacklogIssues(projectId?: string | null, enabled = true) {
+  return useQuery({
+    queryKey: planningKeys.backlogIssues(projectId),
+    queryFn: () =>
+      issuesApi.list({
+        projectId: projectId!,
+        cycleId: "none",
+        limit: 100,
+        offset: 0,
+      }),
+    enabled: !!projectId && enabled,
+  });
+}
+
+export function useProjectMilestones(projectId?: string | null) {
+  return useQuery({
+    queryKey: planningKeys.milestones(projectId),
+    queryFn: () => planningApi.milestones(projectId!),
     enabled: !!projectId,
   });
 }

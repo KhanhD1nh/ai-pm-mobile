@@ -1,5 +1,5 @@
 build:
-  name: Build unsigned iPhone IPA
+  name: Build unsigned release iPhone IPA
   steps:
     - eas/checkout
 
@@ -13,7 +13,7 @@ build:
         command: pod install
 
     - run:
-        name: Compile unsigned iPhone app
+        name: Compile unsigned release iPhone app
         working_directory: ./ios
         command: |
           set -euo pipefail
@@ -33,7 +33,7 @@ build:
           xcodebuild \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
-            -configuration Debug \
+            -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath ../build-ios \
@@ -43,7 +43,7 @@ build:
             DEVELOPMENT_TEAM='' \
             build
 
-          APP_PATH="$(find ../build-ios/Build/Products/Debug-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
+          APP_PATH="$(find ../build-ios/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
           if [ -z "$APP_PATH" ]; then
             echo "Unsigned .app was not produced"
             exit 1
@@ -61,4 +61,3 @@ build:
         inputs:
           type: application-archive
           path: AI-PM-unsigned.ipa
-
