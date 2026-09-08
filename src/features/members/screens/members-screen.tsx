@@ -2,6 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
+import { useAuth } from "@/providers/auth-provider";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
 import {
   BottomSheet,
@@ -27,6 +28,7 @@ const roles = ["LEAD", "MEMBER", "VIEWER"];
 
 export default function MembersScreen() {
   const { projectId } = useLocalSearchParams<{ projectId: string }>();
+  const { user, organizations, orgId } = useAuth();
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const { project, members } = useProjectMembers(projectId);
@@ -41,9 +43,22 @@ export default function MembersScreen() {
     role: string;
   } | null>(null);
   const [query, setQuery] = useState("");
-  const users = useMemberSearch(query, open, projectId);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [role, setRole] = useState("MEMBER");
+  const organizationRole = organizations.find(
+    (organization) =>
+      organization.id === (project.data?.organization_id ?? orgId),
+  )?.role;
+  const canManageMembers =
+    organizationRole === "OWNER" ||
+    organizationRole === "ADMIN" ||
+    Boolean(
+      user &&
+      (members.data ?? []).some(
+        (member) => member.id === user.id && member.role === "LEAD",
+      ),
+    );
+  const users = useMemberSearch(query, open && canManageMembers, projectId);
   const onError = (error: unknown) =>
     presentError(
       language === "vi"
@@ -97,181 +112,213 @@ export default function MembersScreen() {
       refreshing={pullRefresh.refreshing}
       onRefresh={pullRefresh.onRefresh}
       right={
-        <GlassIconButton
-          icon="person-add-outline"
-          label={language === "vi" ? "Thêm người" : "Add member"}
-          onPress={() => setOpen(true)}
-        />
+        canManageMembers ? (
+          <GlassIconButton
+            icon="person-add-outline"
+            label={language === "vi" ? "Thêm người" : "Add member"}
+            onPress={() => setOpen(true)}
+          />
+        ) : undefined
       }
     >
       <SectionHeader
         title={language === "vi" ? "Nhóm dự án" : "Project team"}
       />
       <ListGroup variant="plain">
-        {(members.data ?? []).map((member, index) => (
-          <MotionPressable
-            accessibilityRole="button"
-            accessibilityLabel={`${member.name}, ${member.email}, ${member.role}`}
-            key={member.id}
-            onPress={() =>
-              setRoleSheet({
-                id: member.id,
-                name: member.name,
-                role: member.role,
-              })
-            }
-            style={[styles.memberRow, index > 0 && styles.border]}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {member.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.copy}>
-              <Text style={styles.name}>{member.name}</Text>
-              <Text style={styles.email}>{member.email}</Text>
-            </View>
-            <Pill
-              text={member.role}
-              tone={member.role === "LEAD" ? "accent" : "neutral"}
-            />
-            <Ionicons
-              accessible={false}
-              name="chevron-forward"
-              size={17}
-              color={ui.colors.textMuted}
-            />
-          </MotionPressable>
-        ))}
+        {(members.data ?? []).map((member, index) => {
+          const content = (
+            <>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {member.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.copy}>
+                <Text style={styles.name}>{member.name}</Text>
+                <Text style={styles.email}>{member.email}</Text>
+              </View>
+              <Pill
+                text={member.role}
+                tone={member.role === "LEAD" ? "accent" : "neutral"}
+              />
+              {canManageMembers ? (
+                <Ionicons
+                  accessible={false}
+                  name="chevron-forward"
+                  size={17}
+                  color={ui.colors.textMuted}
+                />
+              ) : null}
+            </>
+          );
+          const rowStyle = [styles.memberRow, index > 0 && styles.border];
+
+          if (!canManageMembers) {
+            return (
+              <View
+                accessible
+                accessibilityLabel={`${member.name}, ${member.email}, ${member.role}`}
+                key={member.id}
+                style={rowStyle}
+              >
+                {content}
+              </View>
+            );
+          }
+
+          return (
+            <MotionPressable
+              accessibilityRole="button"
+              accessibilityLabel={`${member.name}, ${member.email}, ${member.role}`}
+              key={member.id}
+              onPress={() =>
+                setRoleSheet({
+                  id: member.id,
+                  name: member.name,
+                  role: member.role,
+                })
+              }
+              style={rowStyle}
+            >
+              {content}
+            </MotionPressable>
+          );
+        })}
       </ListGroup>
 
-      <BottomSheet
-        visible={Boolean(roleSheet)}
-        title={roleSheet?.name ?? ""}
-        subtitle={language === "vi" ? "Vai trò trong dự án" : "Project role"}
-        onClose={() => setRoleSheet(null)}
-      >
-        {roles.map((item) => (
-          <ChoiceRow
-            key={item}
-            label={item}
-            active={roleSheet?.role === item}
+      {canManageMembers ? (
+        <BottomSheet
+          visible={Boolean(roleSheet)}
+          title={roleSheet?.name ?? ""}
+          subtitle={language === "vi" ? "Vai trò trong dự án" : "Project role"}
+          onClose={() => setRoleSheet(null)}
+        >
+          {roles.map((item) => (
+            <ChoiceRow
+              key={item}
+              label={item}
+              active={roleSheet?.role === item}
+              onPress={() =>
+                roleSheet &&
+                update.mutate(
+                  { userId: roleSheet.id, role: item },
+                  {
+                    onSuccess: () => setRoleSheet({ ...roleSheet, role: item }),
+                    onError,
+                  },
+                )
+              }
+            />
+          ))}
+          <MotionPressable
             onPress={() =>
               roleSheet &&
-              update.mutate(
-                { userId: roleSheet.id, role: item },
-                {
-                  onSuccess: () => setRoleSheet({ ...roleSheet, role: item }),
-                  onError,
-                },
+              Alert.alert(
+                language === "vi" ? "Xóa thành viên?" : "Remove member?",
+                roleSheet.name,
+                [
+                  { text: language === "vi" ? "Hủy" : "Cancel" },
+                  {
+                    text: language === "vi" ? "Xóa" : "Remove",
+                    style: "destructive",
+                    onPress: () =>
+                      remove.mutate(roleSheet.id, {
+                        onSuccess: () => setRoleSheet(null),
+                        onError,
+                      }),
+                  },
+                ],
               )
             }
-          />
-        ))}
-        <MotionPressable
-          onPress={() =>
-            roleSheet &&
-            Alert.alert(
-              language === "vi" ? "Xóa thành viên?" : "Remove member?",
-              roleSheet.name,
-              [
-                { text: language === "vi" ? "Hủy" : "Cancel" },
-                {
-                  text: language === "vi" ? "Xóa" : "Remove",
-                  style: "destructive",
-                  onPress: () =>
-                    remove.mutate(roleSheet.id, {
-                      onSuccess: () => setRoleSheet(null),
-                      onError,
-                    }),
-                },
-              ],
-            )
-          }
-          style={styles.removeRow}
-        >
-          <Ionicons
-            accessible={false}
-            name="person-remove-outline"
-            size={18}
-            color={ui.colors.danger}
-          />
-          <Text style={styles.removeText}>
-            {language === "vi" ? "Xóa khỏi dự án" : "Remove from project"}
-          </Text>
-        </MotionPressable>
-      </BottomSheet>
+            style={styles.removeRow}
+          >
+            <Ionicons
+              accessible={false}
+              name="person-remove-outline"
+              size={18}
+              color={ui.colors.danger}
+            />
+            <Text style={styles.removeText}>
+              {language === "vi" ? "Xóa khỏi dự án" : "Remove from project"}
+            </Text>
+          </MotionPressable>
+        </BottomSheet>
+      ) : null}
 
-      <BottomSheet
-        visible={open}
-        title={language === "vi" ? "Thêm thành viên" : "Add members"}
-        subtitle={project.data?.name}
-        onClose={closeAdd}
-        footer={
-          <Button
-            title={
-              add.isPending
-                ? language === "vi"
-                  ? "Đang thêm…"
-                  : "Adding…"
-                : selectedUserIds.length > 1
+      {canManageMembers ? (
+        <BottomSheet
+          visible={open}
+          title={language === "vi" ? "Thêm thành viên" : "Add members"}
+          subtitle={project.data?.name}
+          onClose={closeAdd}
+          footer={
+            <Button
+              title={
+                add.isPending
                   ? language === "vi"
-                    ? `Thêm ${selectedUserIds.length} thành viên`
-                    : `Add ${selectedUserIds.length} members`
-                  : language === "vi"
-                    ? "Thêm thành viên"
-                    : "Add member"
-            }
-            disabled={selectedUserIds.length === 0 || add.isPending}
-            onPress={submit}
-          />
-        }
-      >
-        <Field
-          placeholder={
-            language === "vi" ? "Tìm tên hoặc email…" : "Search name or email…"
+                    ? "Đang thêm…"
+                    : "Adding…"
+                  : selectedUserIds.length > 1
+                    ? language === "vi"
+                      ? `Thêm ${selectedUserIds.length} thành viên`
+                      : `Add ${selectedUserIds.length} members`
+                    : language === "vi"
+                      ? "Thêm thành viên"
+                      : "Add member"
+              }
+              disabled={selectedUserIds.length === 0 || add.isPending}
+              onPress={submit}
+            />
           }
-          value={query}
-          onChangeText={setQuery}
-          autoFocus
-        />
-        {query.trim().length > 1 &&
-        candidates.length === 0 &&
-        !users.isFetching ? (
-          <Text style={styles.emptyHint}>
-            {language === "vi"
-              ? "Không tìm thấy người dùng chưa có trong dự án."
-              : "No matching users outside this project."}
-          </Text>
-        ) : null}
-        {candidates.map((user) => (
-          <ChoiceRow
-            key={user.id}
-            label={user.name}
-            description={user.email}
-            active={selectedUserIds.includes(user.id)}
-            onPress={() => toggleUser(user.id)}
+        >
+          <Field
+            placeholder={
+              language === "vi"
+                ? "Tìm tên hoặc email…"
+                : "Search name or email…"
+            }
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
           />
-        ))}
-        {selectedUserIds.length > 0 ? (
-          <Text style={styles.selectionHint}>
-            {language === "vi"
-              ? `Đã chọn ${selectedUserIds.length} người`
-              : `${selectedUserIds.length} selected`}
+          {query.trim().length > 1 &&
+          candidates.length === 0 &&
+          !users.isFetching ? (
+            <Text style={styles.emptyHint}>
+              {language === "vi"
+                ? "Không tìm thấy người dùng chưa có trong dự án."
+                : "No matching users outside this project."}
+            </Text>
+          ) : null}
+          {candidates.map((user) => (
+            <ChoiceRow
+              key={user.id}
+              label={user.name}
+              description={user.email}
+              active={selectedUserIds.includes(user.id)}
+              onPress={() => toggleUser(user.id)}
+            />
+          ))}
+          {selectedUserIds.length > 0 ? (
+            <Text style={styles.selectionHint}>
+              {language === "vi"
+                ? `Đã chọn ${selectedUserIds.length} người`
+                : `${selectedUserIds.length} selected`}
+            </Text>
+          ) : null}
+          <Text style={styles.sheetLabel}>
+            {language === "vi" ? "Vai trò" : "Role"}
           </Text>
-        ) : null}
-        <Text style={styles.sheetLabel}>
-          {language === "vi" ? "Vai trò" : "Role"}
-        </Text>
-        {roles.map((item) => (
-          <ChoiceRow
-            key={item}
-            label={item}
-            active={role === item}
-            onPress={() => setRole(item)}
-          />
-        ))}
-      </BottomSheet>
+          {roles.map((item) => (
+            <ChoiceRow
+              key={item}
+              label={item}
+              active={role === item}
+              onPress={() => setRole(item)}
+            />
+          ))}
+        </BottomSheet>
+      ) : null}
     </Screen>
   );
 }
