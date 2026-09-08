@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '@/providers/auth-provider';
-import { authenticateForAppUnlock, isBiometricLockEnabled, subscribeBiometricLock } from '@/infrastructure/security/biometric-service';
-import { useAppPreferences } from '@/shared/preferences/app-preferences-context';
-import type { AppTheme } from '@/shared/components/ui/theme';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "@/providers/auth-provider";
+import {
+  authenticateForAppUnlock,
+  isBiometricLockEnabled,
+  subscribeBiometricLock,
+} from "@/infrastructure/security/biometric-service";
+import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
+import type { AppTheme } from "@/shared/components/ui/theme";
 
 export function AppLockBootstrap() {
   const { user } = useAuth();
@@ -13,6 +17,8 @@ export function AppLockBootstrap() {
   const [enabled, setEnabled] = useState(false);
   const [locked, setLocked] = useState(false);
   const authenticating = useRef(false);
+  const lockRequestedByAppState = useRef(false);
+  const justEnabled = useRef(false);
 
   const unlock = useCallback(async () => {
     if (!enabled || !userId || authenticating.current) return;
@@ -29,17 +35,41 @@ export function AppLockBootstrap() {
   useEffect(() => {
     void isBiometricLockEnabled().then(setEnabled);
     return subscribeBiometricLock((value) => {
+      if (value) justEnabled.current = true;
       setEnabled(value);
-      if (!value) setLocked(false);
+      if (!value) {
+        lockRequestedByAppState.current = false;
+        setLocked(false);
+      }
     });
   }, []);
 
   useEffect(() => {
     if (!enabled || !userId) return;
-    void unlock();
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void unlock();
-      else if (state === 'background' || state === 'inactive') setLocked(true);
+    // Enabling biometrics already requires a successful native authentication.
+    // Do not immediately ask for a second authentication in the same session.
+    if (justEnabled.current) justEnabled.current = false;
+    else void unlock();
+
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        // The native Face ID / Touch ID sheet can itself emit inactive -> active.
+        // Only authenticate here when the lock was requested by a real app-state
+        // transition while no authentication prompt was already running.
+        if (!authenticating.current && lockRequestedByAppState.current) {
+          lockRequestedByAppState.current = false;
+          void unlock();
+        }
+        return;
+      }
+
+      if (
+        (state === "background" || state === "inactive") &&
+        !authenticating.current
+      ) {
+        lockRequestedByAppState.current = true;
+        setLocked(true);
+      }
     });
     return () => sub.remove();
   }, [enabled, userId, unlock]);
@@ -47,22 +77,73 @@ export function AppLockBootstrap() {
   if (!enabled || !userId || !locked) return null;
   return (
     <View style={styles.overlay}>
-      <View style={styles.logo}><Text style={styles.logoText}>AI</Text></View>
-      <Text style={styles.title}>{language === 'vi' ? 'AI-PM đang khóa' : 'AI-PM is locked'}</Text>
-      <Text style={styles.body}>{language === 'vi' ? 'Xác thực sinh trắc học để tiếp tục.' : 'Authenticate with biometrics to continue.'}</Text>
-      <Pressable accessibilityRole="button" style={styles.button} onPress={() => void unlock()}>
-        <Text style={styles.buttonText}>{language === 'vi' ? 'Mở khóa' : 'Unlock'}</Text>
+      <View style={styles.logo}>
+        <Text style={styles.logoText}>AI</Text>
+      </View>
+      <Text style={styles.title}>
+        {language === "vi" ? "AI-PM đang khóa" : "AI-PM is locked"}
+      </Text>
+      <Text style={styles.body}>
+        {language === "vi"
+          ? "Xác thực sinh trắc học để tiếp tục."
+          : "Authenticate with biometrics to continue."}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        style={styles.button}
+        onPress={() => void unlock()}
+      >
+        <Text style={styles.buttonText}>
+          {language === "vi" ? "Mở khóa" : "Unlock"}
+        </Text>
       </Pressable>
     </View>
   );
 }
 
 const createStyles = (ui: AppTheme) => ({
-  overlay: { position: 'absolute' as const, top: 0, right: 0, bottom: 0, left: 0, zIndex: 9999, elevation: 9999, backgroundColor: ui.colors.bg, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 12, padding: 24 },
-  logo: { width: 64, height: 64, borderRadius: 20, backgroundColor: ui.colors.accentSoft, alignItems: 'center' as const, justifyContent: 'center' as const },
-  logoText: { color: ui.colors.accentStrong, fontSize: 24, fontWeight: '800' as const },
+  overlay: {
+    position: "absolute" as const,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 9999,
+    elevation: 9999,
+    backgroundColor: ui.colors.bg,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    gap: 12,
+    padding: 24,
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: ui.colors.accentSoft,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  logoText: {
+    color: ui.colors.accentStrong,
+    fontSize: 24,
+    fontWeight: "800" as const,
+  },
   title: { color: ui.colors.text, ...ui.typography.title },
-  body: { color: ui.colors.textMuted, ...ui.typography.body, textAlign: 'center' as const },
-  button: { minHeight: 48, marginTop: 10, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: ui.colors.accentStrong, borderRadius: ui.radius.md, alignItems: 'center' as const, justifyContent: 'center' as const },
+  body: {
+    color: ui.colors.textMuted,
+    ...ui.typography.body,
+    textAlign: "center" as const,
+  },
+  button: {
+    minHeight: 48,
+    marginTop: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: ui.colors.accentStrong,
+    borderRadius: ui.radius.md,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
   buttonText: { color: ui.colors.inverseText, ...ui.typography.bodyStrong },
 });
