@@ -4,7 +4,6 @@ import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { DateTimePicker as NativeDateTimePicker } from '@expo/ui/community/datetime-picker';
 import Markdown from '@ronradtke/react-native-markdown-display';
-import Animated, { Easing, FadeIn, FadeOut, LinearTransition, ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Button, Field } from '@/shared/components/ui/primitives';
 import { BottomSheet, ChoiceRow, ListGroup, ListRow, SectionHeader } from '@/shared/components/ui/mobile';
 import { MotionPressable, SoftFade } from '@/shared/components/ui/motion';
@@ -33,20 +32,6 @@ const priorities: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 const participantRoles: ParticipantRole[] = ['ASSIGNEE', 'REVIEWER', 'NEXT_REVIEWER', 'OBSERVER'];
 const relationTypes = ['BLOCKS', 'RELATES_TO', 'DUPLICATES'] as const;
 const scheduleDurationOptions = [0.5, 1, 2, 4] as const;
-const duePickerLayoutTransition = LinearTransition
-  .springify()
-  .damping(30)
-  .stiffness(230)
-  .mass(0.8)
-  .reduceMotion(ReduceMotion.System);
-const duePickerEntering = FadeIn
-  .duration(220)
-  .easing(Easing.out(Easing.quad))
-  .reduceMotion(ReduceMotion.System);
-const duePickerExiting = FadeOut
-  .duration(180)
-  .easing(Easing.inOut(Easing.quad))
-  .reduceMotion(ReduceMotion.System);
 type Sheet = 'status' | 'priority' | 'assignee' | 'cycle' | 'milestone' | 'tags' | 'due' | 'schedule' | 'description' | 'participants' | 'relations' | null;
 type DuePickerMode = 'date' | null;
 type ScheduleQuickSelection = 'now' | 'tomorrow' | null;
@@ -132,23 +117,6 @@ export default function IssueDetailScreen() {
   const [relationIdentifier, setRelationIdentifier] = useState('');
   const [relationType, setRelationType] = useState<(typeof relationTypes)[number]>('RELATES_TO');
   const [participantRole, setParticipantRole] = useState<ParticipantRole>('OBSERVER');
-  const reduceMotion = useReducedMotion();
-  const dueChevronProgress = useSharedValue(0);
-  const dueChevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateZ: `${dueChevronProgress.value * 180}deg` }],
-  }));
-
-  useEffect(() => {
-    const next = duePickerMode ? 1 : 0;
-    if (reduceMotion) {
-      dueChevronProgress.value = next;
-      return;
-    }
-    dueChevronProgress.value = withTiming(next, {
-      duration: 220,
-      easing: Easing.inOut(Easing.cubic),
-    });
-  }, [dueChevronProgress, duePickerMode, reduceMotion]);
 
   const statusName = useMemo(
     () => issue.data?.status?.name ?? statuses.data?.find((status) => status.id === issue.data?.status_id)?.name ?? '—',
@@ -381,48 +349,38 @@ export default function IssueDetailScreen() {
           </View>
         </View>
 
-        <Animated.View layout={duePickerLayoutTransition} style={styles.duePickerGroup}>
+        <View style={styles.duePickerGroup}>
           <View style={styles.duePickerRow}>
             <View style={styles.duePickerLabelGroup}>
               <View style={styles.dueRowIcon}><Ionicons name="calendar-outline" size={17} color={ui.colors.textSecondary} /></View>
               <Text style={styles.duePickerLabel}>{language === 'vi' ? 'Ngày' : 'Date'}</Text>
             </View>
-            <MotionPressable
-              accessibilityRole="button"
-              accessibilityLabel={`${language === 'vi' ? 'Chọn ngày' : 'Choose date'}, ${duePickerValueLabel}`}
-              onPress={() => setDuePickerMode((current) => current ? null : 'date')}
-              style={styles.duePickerValueButton}
-            >
-              <Text style={styles.duePickerValue}>{duePickerValueLabel}</Text>
-              <Animated.View style={dueChevronStyle}>
-                <Ionicons name="chevron-down" size={16} color={ui.colors.textMuted} />
-              </Animated.View>
-            </MotionPressable>
-          </View>
-
-          {Platform.OS === 'ios' && duePickerMode ? (
-            <Animated.View
-              entering={duePickerEntering}
-              exiting={duePickerExiting}
-              layout={duePickerLayoutTransition}
-              style={styles.dueInlinePickerWrap}
-            >
+            {Platform.OS === 'ios' ? (
               <NativeDateTimePicker
                 value={dueAt}
                 mode="date"
-                display="inline"
+                display="compact"
                 locale={duePickerLocale}
                 themeVariant={resolvedTheme}
                 accentColor={ui.colors.accentStrong}
                 onValueChange={(_, selected) => applyDueSelection(selected)}
-                style={styles.dueInlinePicker}
+                style={styles.dueCompactPicker}
               />
-            </Animated.View>
-          ) : null}
+            ) : (
+              <MotionPressable
+                accessibilityRole="button"
+                accessibilityLabel={`${language === 'vi' ? 'Chọn ngày' : 'Choose date'}, ${duePickerValueLabel}`}
+                onPress={() => setDuePickerMode('date')}
+                style={styles.duePickerValueButton}
+              >
+                <Text style={styles.duePickerValue}>{duePickerValueLabel}</Text>
+                <Ionicons name="chevron-down" size={16} color={ui.colors.textMuted} />
+              </MotionPressable>
+            )}
+          </View>
+        </View>
 
-        </Animated.View>
-
-        <Animated.View layout={duePickerLayoutTransition} style={styles.dueQuickActions}>
+        <View style={styles.dueQuickActions}>
           <MotionPressable
             accessibilityRole="button"
             onPress={() => {
@@ -446,7 +404,7 @@ export default function IssueDetailScreen() {
           >
             <Text style={styles.dueQuickText}>{language === 'vi' ? 'Ngày mai' : 'Tomorrow'}</Text>
           </MotionPressable>
-        </Animated.View>
+        </View>
 
         {Platform.OS === 'android' && duePickerMode ? (
           <NativeDateTimePicker
@@ -654,8 +612,7 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   duePickerLabel: { color: ui.colors.text, ...ui.typography.bodyStrong },
   duePickerValueButton: { minHeight: Platform.OS === 'android' ? 48 : 44, flexShrink: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingLeft: 12 },
   duePickerValue: { color: ui.colors.accentStrong, ...ui.typography.bodyStrong },
-  dueInlinePickerWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ui.colors.border, paddingHorizontal: 8, paddingBottom: 8 },
-  dueInlinePicker: { alignSelf: 'stretch' },
+  dueCompactPicker: { minWidth: 128, minHeight: 44, flexShrink: 0 },
   dueQuickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
   dueQuickAction: { minHeight: Platform.OS === 'android' ? 48 : 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised },
   dueQuickText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
