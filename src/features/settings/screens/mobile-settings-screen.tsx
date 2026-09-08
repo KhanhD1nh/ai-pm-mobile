@@ -16,8 +16,10 @@ export default function MobileSettingsScreen() {
   const {
     devices,
     busy,
+    pushEnabled,
     biometric,
     enablePush,
+    disablePush,
     disableDevice,
     toggleBiometric,
     updateBusy,
@@ -56,6 +58,24 @@ export default function MobileSettingsScreen() {
     } catch (error) {
       presentError(
         language === "vi" ? "Không thể bật push" : "Could not enable push",
+        error,
+      );
+    }
+  };
+
+  const handlePushToggle = async (next: boolean) => {
+    try {
+      if (next) await enablePush();
+      else await disablePush();
+    } catch (error) {
+      presentError(
+        language === "vi"
+          ? next
+            ? "Không thể bật push"
+            : "Không thể tắt push"
+          : next
+            ? "Could not enable push"
+            : "Could not disable push",
         error,
       );
     }
@@ -150,11 +170,24 @@ export default function MobileSettingsScreen() {
               : "Receive alerts while the app is backgrounded or closed."
           }
           trailing={
-            <Button
-              title={busy ? "…" : language === "vi" ? "Bật" : "Enable"}
-              disabled={busy || Platform.OS === "web"}
-              onPress={() => void handleEnablePush()}
-            />
+            Platform.OS === "ios" ? (
+              <Switch
+                accessibilityLabel={
+                  language === "vi"
+                    ? "Bật hoặc tắt thông báo đẩy"
+                    : "Enable or disable push notifications"
+                }
+                value={pushEnabled}
+                disabled={busy || devices.isLoading}
+                onValueChange={(value) => void handlePushToggle(value)}
+              />
+            ) : (
+              <Button
+                title={busy ? "…" : language === "vi" ? "Bật" : "Enable"}
+                disabled={busy || Platform.OS === "web"}
+                onPress={() => void handleEnablePush()}
+              />
+            )
           }
         />
       </ListGroup>

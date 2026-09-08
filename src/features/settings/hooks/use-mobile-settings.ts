@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationKeys } from "@/features/notifications/public";
 import { pushApi } from "@/infrastructure/push/push-api";
 import {
+  getCurrentPushDeviceId,
+  setCurrentPushDeviceId,
+} from "@/infrastructure/push/push-device-storage";
+import {
   registerForPushNotifications,
+  resolveCurrentPushDevice,
   syncAppBadge,
 } from "@/infrastructure/push/push-service";
 import {
@@ -29,6 +34,9 @@ export function useMobileSettings() {
   const queryClient = useQueryClient();
   const { orgId } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [currentPushDeviceId, setCurrentPushDeviceIdState] = useState<
+    string | null
+  >(null);
   const [biometric, setBiometric] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<
@@ -46,6 +54,26 @@ export function useMobileSettings() {
     queryFn: pushApi.devices,
     enabled: !!orgId,
   });
+  const currentPushDevice = useMemo(
+    () => resolveCurrentPushDevice(devices.data ?? [], currentPushDeviceId),
+    [currentPushDeviceId, devices.data],
+  );
+  const pushEnabled = currentPushDevice?.enabled ?? false;
+
+  useEffect(() => {
+    let active = true;
+    void getCurrentPushDeviceId().then((deviceId) => {
+      if (active) setCurrentPushDeviceIdState(deviceId);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentPushDeviceId || !currentPushDevice) return;
+    void setCurrentPushDeviceId(currentPushDevice.id);
+  }, [currentPushDevice, currentPushDeviceId]);
 
   useEffect(() => {
     void isBiometricLockEnabled().then(setBiometric);
@@ -60,11 +88,25 @@ export function useMobileSettings() {
   const enablePush = async () => {
     setBusy(true);
     try {
-      await registerForPushNotifications();
+      const device = await registerForPushNotifications();
+      setCurrentPushDeviceIdState(device.id);
       await queryClient.invalidateQueries({
         queryKey: notificationKeys.devices(orgId),
       });
       await syncAppBadge();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disablePush = async () => {
+    if (!currentPushDevice) return;
+    setBusy(true);
+    try {
+      await pushApi.disableDevice(currentPushDevice.id);
+      await queryClient.invalidateQueries({
+        queryKey: notificationKeys.devices(orgId),
+      });
     } finally {
       setBusy(false);
     }
@@ -128,8 +170,10 @@ export function useMobileSettings() {
   return {
     devices,
     busy,
+    pushEnabled,
     biometric,
     enablePush,
+    disablePush,
     disableDevice,
     toggleBiometric,
     updateBusy,
