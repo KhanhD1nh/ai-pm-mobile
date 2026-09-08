@@ -46,6 +46,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false
+        }
+      ],
       "expo-notifications",
       "expo-local-authentication",
       [

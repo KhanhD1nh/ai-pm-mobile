@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { NavigationBar } from "expo-navigation-bar";
 import { Platform, StatusBar } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppProviders } from "@/providers/app-providers";
@@ -30,6 +31,9 @@ function AppShell() {
 
   return (
     <ThemeProvider value={navigationTheme}>
+      {Platform.OS === "android" ? (
+        <NavigationBar style={resolvedTheme === "dark" ? "dark" : "light"} />
+      ) : null}
       <StatusBar
         barStyle={resolvedTheme === "dark" ? "light-content" : "dark-content"}
         translucent={Platform.OS === "android"}
