@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as Updates from "expo-updates";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { notificationKeys } from "@/features/notifications/public";
 import { pushApi } from "@/infrastructure/push/push-api";
@@ -34,12 +35,16 @@ import {
 export function useMobileSettings() {
   const queryClient = useQueryClient();
   const { orgId } = useAuth();
+  const otaState = Updates.useUpdates();
   const [busy, setBusy] = useState(false);
   const [currentPushDeviceId, setCurrentPushDeviceIdState] = useState<
     string | null
   >(null);
   const [biometric, setBiometric] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
+  const [updateOperation, setUpdateOperation] = useState<
+    "idle" | "checking" | "downloading"
+  >("idle");
   const [updateStatus, setUpdateStatus] = useState<
     "idle" | "available" | "up-to-date" | "disabled"
   >("idle");
@@ -128,23 +133,40 @@ export function useMobileSettings() {
 
   const checkUpdate = async () => {
     setUpdateBusy(true);
+    setUpdateOperation("checking");
     try {
       const result = await checkForOtaUpdate();
       setUpdateStatus(result.status);
       return result;
     } finally {
       setUpdateBusy(false);
+      setUpdateOperation("idle");
     }
   };
 
   const applyUpdate = async () => {
     setUpdateBusy(true);
+    setUpdateOperation("downloading");
     try {
       await downloadAndApplyOtaUpdate();
     } finally {
       setUpdateBusy(false);
+      setUpdateOperation("idle");
     }
   };
+
+  const updateActivity = otaState.isRestarting
+    ? "restarting"
+    : otaState.isDownloading
+      ? "downloading"
+      : otaState.isChecking
+        ? "checking"
+        : updateOperation;
+  const updateProgress =
+    updateActivity === "downloading" &&
+    typeof otaState.downloadProgress === "number"
+      ? Math.min(1, Math.max(0, otaState.downloadProgress))
+      : null;
 
   const syncOfflineQueue = async () => {
     const result = await flushOfflineMutationQueue();
@@ -180,6 +202,8 @@ export function useMobileSettings() {
     disableDevice,
     toggleBiometric,
     updateBusy,
+    updateActivity,
+    updateProgress,
     updateStatus,
     updateInfo: getOtaUpdateInfo(),
     checkUpdate,

@@ -1,4 +1,11 @@
-import { Alert, Platform, Switch, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 import { Button } from "@/shared/components/ui/primitives";
 import {
   ListGroup,
@@ -24,6 +31,8 @@ export default function MobileSettingsScreen() {
     disableDevice,
     toggleBiometric,
     updateBusy,
+    updateActivity,
+    updateProgress,
     updateStatus,
     updateInfo,
     checkUpdate,
@@ -35,6 +44,26 @@ export default function MobileSettingsScreen() {
   } = useMobileSettings();
   const pullRefresh = usePullToRefresh(() => devices.refetch());
   const locale = language === "vi" ? "vi-VN" : "en-US";
+  const updateProgressPercent =
+    updateProgress == null ? null : Math.round(updateProgress * 100);
+  const updateActivityLabel =
+    updateActivity === "checking"
+      ? language === "vi"
+        ? "Đang kiểm tra bản cập nhật…"
+        : "Checking for updates…"
+      : updateActivity === "downloading"
+        ? language === "vi"
+          ? updateProgressPercent == null
+            ? "Đang tải bản cập nhật…"
+            : `Đang tải bản cập nhật · ${updateProgressPercent}%`
+          : updateProgressPercent == null
+            ? "Downloading update…"
+            : `Downloading update · ${updateProgressPercent}%`
+        : updateActivity === "restarting"
+          ? language === "vi"
+            ? "Đã tải xong · đang khởi động lại…"
+            : "Download complete · restarting…"
+          : null;
   const otaUnavailableDetail =
     updateInfo.supportReason === "development-build"
       ? language === "vi"
@@ -435,7 +464,14 @@ export default function MobileSettingsScreen() {
           trailing={
             <Button
               title={
-                updateBusy ? "…" : language === "vi" ? "Kiểm tra" : "Check"
+                updateActivity === "downloading" &&
+                updateProgressPercent != null
+                  ? `${updateProgressPercent}%`
+                  : updateBusy
+                    ? "…"
+                    : language === "vi"
+                      ? "Kiểm tra"
+                      : "Check"
               }
               disabled={updateBusy || !updateInfo.supported}
               onPress={() => void handleCheckUpdate()}
@@ -443,6 +479,89 @@ export default function MobileSettingsScreen() {
           }
         />
       </ListGroup>
+      {updateActivityLabel ? (
+        <View
+          style={{
+            gap: 10,
+            paddingHorizontal: 14,
+            paddingVertical: 13,
+            borderRadius: ui.radius.lg,
+            backgroundColor: ui.colors.surface,
+            borderWidth: 1,
+            borderColor: ui.colors.border,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <ActivityIndicator size="small" color={ui.colors.accentStrong} />
+            <Text
+              style={{
+                flex: 1,
+                color: ui.colors.text,
+                ...ui.typography.bodyStrong,
+              }}
+            >
+              {updateActivityLabel}
+            </Text>
+          </View>
+
+          {updateActivity === "downloading" && updateProgressPercent != null ? (
+            <View
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel={
+                language === "vi"
+                  ? "Tiến trình tải cập nhật"
+                  : "Update download progress"
+              }
+              accessibilityValue={{
+                min: 0,
+                max: 100,
+                now: updateProgressPercent,
+              }}
+              style={{
+                height: 6,
+                overflow: "hidden",
+                borderRadius: 999,
+                backgroundColor: ui.colors.border,
+              }}
+            >
+              <View
+                style={{
+                  width: `${updateProgressPercent}%`,
+                  height: "100%",
+                  borderRadius: 999,
+                  backgroundColor: ui.colors.accentStrong,
+                }}
+              />
+            </View>
+          ) : null}
+
+          <Text
+            style={{
+              color: ui.colors.textMuted,
+              ...ui.typography.caption,
+            }}
+          >
+            {updateActivity === "downloading"
+              ? language === "vi"
+                ? "AI-PM sẽ tự khởi động lại khi tải xong."
+                : "AI-PM will restart automatically when the download finishes."
+              : updateActivity === "checking"
+                ? language === "vi"
+                  ? "Đang kết nối tới kênh OTA internal."
+                  : "Connecting to the internal OTA channel."
+                : language === "vi"
+                  ? "Bản cập nhật đã sẵn sàng để áp dụng."
+                  : "The update is ready to be applied."}
+          </Text>
+        </View>
+      ) : null}
     </Screen>
   );
 }

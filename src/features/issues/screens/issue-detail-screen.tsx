@@ -183,15 +183,14 @@ export default function IssueDetailScreen() {
     ? storedDue.toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' })
     : (language === 'vi' ? 'Chưa đặt' : 'None');
   const dueDateLabel = dueAt.toLocaleDateString(locale, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-  const duePickerValueLabel = dueAt.toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' });
+  const duePickerValueLabel = dueAt.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
   const duePickerLocale = language === 'vi' ? 'vi_VN' : 'en_US';
 
   const applyDueSelection = (selected: Date) => {
     setDueAt((current) => mergeDatePart(current, selected));
-    // Keep the inline iOS calendar open after a selection. Collapsing the
-    // calendar at the same instant as the native selection feedback makes the
-    // interaction feel abrupt. Android remains dialog-based and closes after
-    // confirmation as expected.
+    // Android is dialog-based and closes after confirmation. The iOS compact
+    // picker stays mounted, while its visible label is rendered by us below so
+    // the date format cannot change after the native picker returns a value.
     if (Platform.OS === 'android') setDuePickerMode(null);
   };
 
@@ -356,16 +355,27 @@ export default function IssueDetailScreen() {
               <Text style={styles.duePickerLabel}>{language === 'vi' ? 'Ngày' : 'Date'}</Text>
             </View>
             {Platform.OS === 'ios' ? (
-              <NativeDateTimePicker
-                value={dueAt}
-                mode="date"
-                display="compact"
-                locale={duePickerLocale}
-                themeVariant={resolvedTheme}
-                accentColor={ui.colors.accentStrong}
-                onValueChange={(_, selected) => applyDueSelection(selected)}
-                style={styles.dueCompactPicker}
-              />
+              <View style={styles.dueCompactPickerControl}>
+                <NativeDateTimePicker
+                  value={dueAt}
+                  mode="date"
+                  display="compact"
+                  locale={duePickerLocale}
+                  themeVariant={resolvedTheme}
+                  accentColor={ui.colors.accentStrong}
+                  onValueChange={(_, selected) => applyDueSelection(selected)}
+                  style={styles.dueCompactPickerNative}
+                />
+                <View
+                  pointerEvents="none"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                  style={styles.dueCompactPickerLabel}
+                >
+                  <Text style={styles.duePickerValue}>{duePickerValueLabel}</Text>
+                  <Ionicons name="chevron-down" size={16} color={ui.colors.textMuted} />
+                </View>
+              </View>
             ) : (
               <MotionPressable
                 accessibilityRole="button"
@@ -612,7 +622,9 @@ const createStyles = (ui: AppTheme) => StyleSheet.create({
   duePickerLabel: { color: ui.colors.text, ...ui.typography.bodyStrong },
   duePickerValueButton: { minHeight: Platform.OS === 'android' ? 48 : 44, flexShrink: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, paddingLeft: 12 },
   duePickerValue: { color: ui.colors.accentStrong, ...ui.typography.bodyStrong },
-  dueCompactPicker: { minWidth: 128, minHeight: 44, flexShrink: 0 },
+  dueCompactPickerControl: { width: 138, height: 44, flexShrink: 0, position: 'relative' },
+  dueCompactPickerNative: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
+  dueCompactPickerLabel: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6, backgroundColor: ui.colors.surface },
   dueQuickActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 },
   dueQuickAction: { minHeight: Platform.OS === 'android' ? 48 : 44, justifyContent: 'center', paddingHorizontal: 13, borderRadius: ui.radius.sm, backgroundColor: ui.colors.surfaceRaised },
   dueQuickText: { color: ui.colors.textSecondary, ...ui.typography.caption, fontWeight: '600' },
