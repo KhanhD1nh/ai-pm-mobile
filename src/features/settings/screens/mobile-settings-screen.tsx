@@ -47,23 +47,19 @@ export default function MobileSettingsScreen() {
   const updateProgressPercent =
     updateProgress == null ? null : Math.round(updateProgress * 100);
   const updateActivityLabel =
-    updateActivity === "checking"
+    updateActivity === "downloading"
       ? language === "vi"
-        ? "Đang kiểm tra bản cập nhật…"
-        : "Checking for updates…"
-      : updateActivity === "downloading"
+        ? updateProgressPercent == null
+          ? "Đang tải bản cập nhật…"
+          : `Đang tải bản cập nhật · ${updateProgressPercent}%`
+        : updateProgressPercent == null
+          ? "Downloading update…"
+          : `Downloading update · ${updateProgressPercent}%`
+      : updateActivity === "restarting"
         ? language === "vi"
-          ? updateProgressPercent == null
-            ? "Đang tải bản cập nhật…"
-            : `Đang tải bản cập nhật · ${updateProgressPercent}%`
-          : updateProgressPercent == null
-            ? "Downloading update…"
-            : `Downloading update · ${updateProgressPercent}%`
-        : updateActivity === "restarting"
-          ? language === "vi"
-            ? "Đã tải xong · đang khởi động lại…"
-            : "Download complete · restarting…"
-          : null;
+          ? "Đã tải xong · đang khởi động lại…"
+          : "Download complete · restarting…"
+        : null;
   const otaUnavailableDetail =
     updateInfo.supportReason === "development-build"
       ? language === "vi"
@@ -462,20 +458,40 @@ export default function MobileSettingsScreen() {
               : otaUnavailableDetail
           }
           trailing={
-            <Button
-              title={
-                updateActivity === "downloading" &&
-                updateProgressPercent != null
-                  ? `${updateProgressPercent}%`
-                  : updateBusy
-                    ? "…"
+            updateActivity === "checking" ? (
+              <View
+                accessibilityRole="progressbar"
+                accessibilityLabel={
+                  language === "vi"
+                    ? "Đang kiểm tra bản cập nhật"
+                    : "Checking for updates"
+                }
+                style={{
+                  width: 76,
+                  minHeight: Platform.OS === "android" ? 52 : 48,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <ActivityIndicator
+                  size="small"
+                  color={ui.colors.accentStrong}
+                />
+              </View>
+            ) : (
+              <Button
+                title={
+                  updateActivity === "downloading" &&
+                  updateProgressPercent != null
+                    ? `${updateProgressPercent}%`
                     : language === "vi"
                       ? "Kiểm tra"
                       : "Check"
-              }
-              disabled={updateBusy || !updateInfo.supported}
-              onPress={() => void handleCheckUpdate()}
-            />
+                }
+                disabled={updateBusy || !updateInfo.supported}
+                onPress={() => void handleCheckUpdate()}
+              />
+            )
           }
         />
       </ListGroup>
@@ -552,13 +568,9 @@ export default function MobileSettingsScreen() {
               ? language === "vi"
                 ? "AI-PM sẽ tự khởi động lại khi tải xong."
                 : "AI-PM will restart automatically when the download finishes."
-              : updateActivity === "checking"
-                ? language === "vi"
-                  ? "Đang kết nối tới kênh OTA internal."
-                  : "Connecting to the internal OTA channel."
-                : language === "vi"
-                  ? "Bản cập nhật đã sẵn sàng để áp dụng."
-                  : "The update is ready to be applied."}
+              : language === "vi"
+                ? "Bản cập nhật đã sẵn sàng để áp dụng."
+                : "The update is ready to be applied."}
           </Text>
         </View>
       ) : null}
