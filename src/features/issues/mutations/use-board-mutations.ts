@@ -87,12 +87,7 @@ export function useQuickMoveIssue(projectId?: string | null) {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: issueKeys.project(projectId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: issueKeys.projectInfinite(projectId),
-        }),
+        queryClient.invalidateQueries({ queryKey: issueKeys.all }),
         queryClient.invalidateQueries({ queryKey: projectKeys.all }),
       ]);
     },

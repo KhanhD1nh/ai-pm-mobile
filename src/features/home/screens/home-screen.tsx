@@ -5,7 +5,10 @@ import { StyleSheet, Text, View } from "react-native";
 import { GlassIconButton, SectionHeader } from "@/shared/components/ui/mobile";
 import { MotionPressable } from "@/shared/components/ui/motion";
 import { Screen } from "@/shared/components/ui/screen";
-import type { AppTheme } from "@/shared/components/ui/theme";
+import {
+  statusCategoryColor,
+  type AppTheme,
+} from "@/shared/components/ui/theme";
 import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import { useAuth } from "@/providers/auth-provider";
@@ -153,8 +156,12 @@ export default function HomeScreen() {
               >
                 <View
                   style={[
-                    styles.statusRing,
-                    isOverdue && styles.statusRingDanger,
+                    styles.statusDot,
+                    {
+                      backgroundColor: isOverdue
+                        ? ui.colors.danger
+                        : statusCategoryColor(ui, issue.status?.category),
+                    },
                   ]}
                 />
                 <View style={styles.rowCopy}>
@@ -332,14 +339,12 @@ const createStyles = (ui: AppTheme) =>
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: ui.colors.border,
     },
-    statusRing: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      borderWidth: 2,
-      borderColor: ui.colors.borderStrong,
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginHorizontal: 5,
     },
-    statusRingDanger: { borderColor: ui.colors.danger },
     projectDot: {
       width: 10,
       height: 10,

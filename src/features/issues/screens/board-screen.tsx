@@ -1,6 +1,12 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
-import { useMemo, useState } from "react";
-import { SectionList, StyleSheet, Text, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  SectionList,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
@@ -23,9 +29,12 @@ import { useAppPreferences } from "@/shared/preferences/app-preferences-context"
 import { presentError } from "@/shared/errors/present-error";
 import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
 import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
-import type { Priority } from "@/shared/contracts";
+import type { Issue, Priority, WorkflowStatus } from "@/shared/contracts";
 import { useBoardData } from "../queries/use-board-data";
-import { useCreateIssue } from "../mutations/use-board-mutations";
+import {
+  useCreateIssue,
+  useQuickMoveIssue,
+} from "../mutations/use-board-mutations";
 
 const priorities: (Priority | "ALL")[] = [
   "ALL",
@@ -73,12 +82,33 @@ export default function BoardScreen() {
   const { project, statuses, members, cycles, issues, issueItems, refresh } =
     useBoardData(projectId, boardFilters);
   const create = useCreateIssue(projectId);
+  const quickMove = useQuickMoveIssue(projectId);
+  const previousStatusByIssue = useRef(new Map<string, string>());
   const pullRefresh = usePullToRefresh(refresh);
 
   const orderedStatuses = useMemo(
     () => [...(statuses.data ?? [])].sort((a, b) => a.position - b.position),
     [statuses.data],
   );
+  const statusById = useMemo(
+    () => new Map(orderedStatuses.map((status) => [status.id, status])),
+    [orderedStatuses],
+  );
+  const doneStatus = useMemo(
+    () => orderedStatuses.find((status) => status.category === "DONE"),
+    [orderedStatuses],
+  );
+  const reopenFallbackStatus = useMemo(() => {
+    const isActionable = (status: WorkflowStatus) =>
+      !["DONE", "CANCELED", "REJECTED"].includes(status.category);
+    return (
+      orderedStatuses.find((status) => status.category === "TODO") ??
+      orderedStatuses.find(
+        (status) => status.is_default && isActionable(status),
+      ) ??
+      orderedStatuses.find(isActionable)
+    );
+  }, [orderedStatuses]);
 
   const activeFilterCount =
     Number(priorityFilter !== "ALL") +
@@ -104,6 +134,60 @@ export default function BoardScreen() {
     setPriorityFilter("ALL");
     setAssigneeFilter("ALL");
     setCycleFilter("ALL");
+  };
+
+  const toggleCompletion = (issue: Issue) => {
+    if (!doneStatus || quickMove.isPending) return;
+
+    const currentStatus = statusById.get(issue.status_id) ?? issue.status;
+    if (!currentStatus) return;
+
+    const isDone = currentStatus.category === "DONE";
+    if (["CANCELED", "REJECTED"].includes(currentStatus.category)) return;
+
+    let targetStatus: WorkflowStatus | undefined;
+    if (isDone) {
+      const previousStatusId = previousStatusByIssue.current.get(issue.id);
+      const previousStatus = previousStatusId
+        ? statusById.get(previousStatusId)
+        : undefined;
+      targetStatus =
+        previousStatus &&
+        !["DONE", "CANCELED", "REJECTED"].includes(previousStatus.category)
+          ? previousStatus
+          : reopenFallbackStatus;
+    } else {
+      previousStatusByIssue.current.set(issue.id, currentStatus.id);
+      targetStatus = doneStatus;
+    }
+
+    if (!targetStatus || targetStatus.id === currentStatus.id) return;
+
+    quickMove.mutate(
+      {
+        identifier: issue.identifier,
+        version: issue.version,
+        statusId: targetStatus.id,
+      },
+      {
+        onSuccess: () => {
+          if (isDone) previousStatusByIssue.current.delete(issue.id);
+        },
+        onError: (error) => {
+          if (!isDone) previousStatusByIssue.current.delete(issue.id);
+          presentError(
+            language === "vi"
+              ? isDone
+                ? "Không thể mở lại công việc"
+                : "Không thể đánh dấu hoàn thành"
+              : isDone
+                ? "Could not reopen task"
+                : "Could not mark task complete",
+            error,
+          );
+        },
+      },
+    );
   };
 
   const submitIssue = () =>
@@ -263,55 +347,139 @@ export default function BoardScreen() {
           </View>
         )}
         ItemSeparatorComponent={() => <View style={styles.divider} />}
-        renderItem={({ item: issue }) => (
-          <MotionPressable
-            accessibilityRole="button"
-            accessibilityLabel={`${issue.identifier}, ${issue.title}, ${issue.priority}`}
-            onPress={() =>
-              router.push({
-                pathname: "/issue/[identifier]",
-                params: { identifier: issue.identifier },
-              })
-            }
-            style={styles.issueRow}
-          >
-            <View style={styles.issueCircle} />
-            <View style={styles.issueCopy}>
-              <Text style={styles.issueTitle} numberOfLines={2}>
-                {issue.title}
-              </Text>
-              <View style={styles.metaLine}>
-                <Text style={styles.identifier}>{issue.identifier}</Text>
-                <Text style={styles.metaDot}>·</Text>
-                <Text
-                  style={[
-                    styles.metaText,
-                    { color: priorityColor(ui, issue.priority) },
-                  ]}
-                >
-                  {issue.priority}
-                </Text>
-                {issue.due_date ? (
-                  <>
+        renderItem={({ item: issue }) => {
+          const currentStatus = statusById.get(issue.status_id) ?? issue.status;
+          const category = currentStatus?.category;
+          const isDone = category === "DONE";
+          const previousStatusId = previousStatusByIssue.current.get(issue.id);
+          const previousStatus = previousStatusId
+            ? statusById.get(previousStatusId)
+            : undefined;
+          const canReopen = Boolean(
+            (previousStatus &&
+              !["DONE", "CANCELED", "REJECTED"].includes(
+                previousStatus.category,
+              )) ||
+            reopenFallbackStatus,
+          );
+          const canToggleCompletion =
+            Boolean(currentStatus) &&
+            category !== "CANCELED" &&
+            category !== "REJECTED" &&
+            (isDone ? canReopen : Boolean(doneStatus));
+          const isToggling =
+            quickMove.isPending &&
+            quickMove.variables?.identifier === issue.identifier;
+
+          return (
+            <View style={styles.issueRow}>
+              <View style={styles.completionSlot}>
+                {canToggleCompletion ? (
+                  <MotionPressable
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={
+                      language === "vi"
+                        ? isDone
+                          ? `Bỏ hoàn thành ${issue.identifier}`
+                          : `Đánh dấu ${issue.identifier} hoàn thành`
+                        : isDone
+                          ? `Mark ${issue.identifier} incomplete`
+                          : `Mark ${issue.identifier} complete`
+                    }
+                    accessibilityState={{
+                      checked: isDone,
+                      disabled: quickMove.isPending,
+                    }}
+                    disabled={quickMove.isPending}
+                    onPress={() => toggleCompletion(issue)}
+                    style={styles.completionButton}
+                  >
+                    {isToggling ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={
+                          isDone ? ui.colors.success : ui.colors.accentStrong
+                        }
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.completionCircle,
+                          isDone && styles.completionCircleChecked,
+                        ]}
+                      >
+                        {isDone ? (
+                          <Ionicons
+                            accessible={false}
+                            name="checkmark"
+                            size={14}
+                            color={ui.colors.inverseText}
+                          />
+                        ) : null}
+                      </View>
+                    )}
+                  </MotionPressable>
+                ) : (
+                  <View
+                    style={[
+                      styles.terminalStatusDot,
+                      {
+                        backgroundColor: statusCategoryColor(ui, category),
+                      },
+                    ]}
+                  />
+                )}
+              </View>
+
+              <MotionPressable
+                accessibilityRole="button"
+                accessibilityLabel={`${issue.identifier}, ${issue.title}, ${issue.priority}`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/issue/[identifier]",
+                    params: { identifier: issue.identifier },
+                  })
+                }
+                style={styles.issueMain}
+              >
+                <View style={styles.issueCopy}>
+                  <Text style={styles.issueTitle} numberOfLines={2}>
+                    {issue.title}
+                  </Text>
+                  <View style={styles.metaLine}>
+                    <Text style={styles.identifier}>{issue.identifier}</Text>
                     <Text style={styles.metaDot}>·</Text>
-                    <Text style={styles.metaText}>
-                      {new Date(issue.due_date).toLocaleDateString(
-                        language === "vi" ? "vi-VN" : "en-US",
-                      )}
+                    <Text
+                      style={[
+                        styles.metaText,
+                        { color: priorityColor(ui, issue.priority) },
+                      ]}
+                    >
+                      {issue.priority}
                     </Text>
-                  </>
+                    {issue.due_date ? (
+                      <>
+                        <Text style={styles.metaDot}>·</Text>
+                        <Text style={styles.metaText}>
+                          {new Date(issue.due_date).toLocaleDateString(
+                            language === "vi" ? "vi-VN" : "en-US",
+                          )}
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
+                </View>
+                {issue.assignee?.name ? (
+                  <View style={styles.assignee}>
+                    <Text style={styles.assigneeText}>
+                      {issue.assignee.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
                 ) : null}
-              </View>
+              </MotionPressable>
             </View>
-            {issue.assignee?.name ? (
-              <View style={styles.assignee}>
-                <Text style={styles.assigneeText}>
-                  {issue.assignee.name.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            ) : null}
-          </MotionPressable>
-        )}
+          );
+        }}
         ListFooterComponent={
           issues.isFetchingNextPage ? (
             <Text style={styles.loadingMore}>
@@ -527,19 +695,50 @@ const createStyles = (ui: AppTheme) =>
       minHeight: 72,
       flexDirection: "row",
       alignItems: "center",
-      gap: 11,
-      paddingVertical: 10,
     },
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: ui.colors.border,
     },
-    issueCircle: {
-      width: 17,
-      height: 17,
-      borderRadius: 9,
+    completionSlot: {
+      width: ui.header.actionSize,
+      height: ui.header.actionSize,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 2,
+    },
+    completionButton: {
+      width: ui.header.actionSize,
+      height: ui.header.actionSize,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    completionCircle: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
       borderWidth: 2,
       borderColor: ui.colors.borderStrong,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    completionCircleChecked: {
+      borderColor: ui.colors.success,
+      backgroundColor: ui.colors.success,
+    },
+    terminalStatusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    issueMain: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 72,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 11,
+      paddingVertical: 10,
     },
     issueCopy: { flex: 1, minWidth: 0 },
     issueTitle: {
