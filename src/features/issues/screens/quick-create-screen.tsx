@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
   BottomSheet,
@@ -30,11 +30,12 @@ const participantRoles: ParticipantRole[] = [
 ];
 
 export default function QuickCreateScreen() {
+  const params = useLocalSearchParams<{ projectId?: string }>();
   const { orgId } = useAuth();
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const projects = useProjects(orgId);
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(params.projectId ?? "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<Priority>("MEDIUM");

@@ -1,14 +1,16 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { router } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  IssueCompletionButton,
+  IssueQuickActionsSheet,
+} from "@/features/issues/public";
+import type { Issue } from "@/shared/contracts";
 import { StyleSheet, Text, View } from "react-native";
 import { GlassIconButton, SectionHeader } from "@/shared/components/ui/mobile";
 import { MotionPressable } from "@/shared/components/ui/motion";
 import { Screen } from "@/shared/components/ui/screen";
-import {
-  statusCategoryColor,
-  type AppTheme,
-} from "@/shared/components/ui/theme";
+import type { AppTheme } from "@/shared/components/ui/theme";
 import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import { useAuth } from "@/providers/auth-provider";
@@ -18,6 +20,7 @@ export default function HomeScreen() {
   const { user, organizations, orgId } = useAuth();
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
+  const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
   const org = organizations.find((item) => item.id === orgId);
   const { projects, overdue, inProgress, refresh } = useHomeDashboard(
     orgId,
@@ -152,18 +155,11 @@ export default function HomeScreen() {
                     params: { identifier: issue.identifier },
                   })
                 }
+                onLongPress={() => setQuickIssue(issue)}
+                delayLongPress={280}
                 style={[styles.workRow, index > 0 && styles.divider]}
               >
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor: isOverdue
-                        ? ui.colors.danger
-                        : statusCategoryColor(ui, issue.status?.category),
-                    },
-                  ]}
-                />
+                <IssueCompletionButton issue={issue} />
                 <View style={styles.rowCopy}>
                   <Text style={styles.rowTitle} numberOfLines={2}>
                     {issue.title}
@@ -254,6 +250,11 @@ export default function HomeScreen() {
           </MotionPressable>
         ))}
       </View>
+
+      <IssueQuickActionsSheet
+        issue={quickIssue}
+        onClose={() => setQuickIssue(null)}
+      />
     </Screen>
   );
 }

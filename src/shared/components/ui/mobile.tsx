@@ -752,11 +752,13 @@ export function ChoiceRow({
   active,
   onPress,
   description,
+  disabled = false,
 }: {
   label: string;
   active?: boolean;
   onPress: () => void;
   description?: string;
+  disabled?: boolean;
 }) {
   const { theme: ui } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
@@ -764,9 +766,14 @@ export function ChoiceRow({
     <MotionPressable
       accessibilityRole="button"
       accessibilityLabel={[label, description].filter(Boolean).join(", ")}
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected: active, disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={[styles.choice, active && styles.choiceActive]}
+      style={[
+        styles.choice,
+        active && styles.choiceActive,
+        disabled && styles.choiceDisabled,
+      ]}
     >
       <View style={styles.choiceCopy}>
         <Text style={[styles.choiceLabel, active && styles.choiceLabelActive]}>
@@ -1025,6 +1032,7 @@ const createStyles = (ui: AppTheme) =>
       backgroundColor: ui.colors.surface,
     },
     choiceActive: { backgroundColor: ui.colors.accentSoft },
+    choiceDisabled: { opacity: 0.5 },
     choiceCopy: { flex: 1, minWidth: 0 },
     choiceLabel: { color: ui.colors.text, ...ui.typography.bodyStrong },
     choiceLabelActive: { color: ui.colors.accentStrong },

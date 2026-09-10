@@ -30,6 +30,7 @@ import { presentError } from "@/shared/errors/present-error";
 import { useDebouncedValue } from "@/shared/hooks/use-debounced-value";
 import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
 import type { Issue, Priority, WorkflowStatus } from "@/shared/contracts";
+import { IssueQuickActionsSheet } from "../components/issue-quick-actions-sheet";
 import { useBoardData } from "../queries/use-board-data";
 import {
   useCreateIssue,
@@ -54,6 +55,7 @@ export default function BoardScreen() {
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [openCreate, setOpenCreate] = useState(false);
+  const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
   const [createStatusId, setCreateStatusId] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -440,6 +442,8 @@ export default function BoardScreen() {
                     params: { identifier: issue.identifier },
                   })
                 }
+                onLongPress={() => setQuickIssue(issue)}
+                delayLongPress={280}
                 style={styles.issueMain}
               >
                 <View style={styles.issueCopy}>
@@ -487,6 +491,11 @@ export default function BoardScreen() {
             </Text>
           ) : null
         }
+      />
+
+      <IssueQuickActionsSheet
+        issue={quickIssue}
+        onClose={() => setQuickIssue(null)}
       />
 
       <BottomSheet

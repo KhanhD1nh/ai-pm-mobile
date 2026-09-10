@@ -49,8 +49,15 @@ export default function InboxScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const { theme: ui, language, t } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
-  const { notifications, unread, markAll, items, prepareOpen, refresh } =
-    useNotificationInbox(filter);
+  const {
+    notifications,
+    unread,
+    markAll,
+    markRead,
+    items,
+    prepareOpen,
+    refresh,
+  } = useNotificationInbox(filter);
   const pullRefresh = usePullToRefresh(refresh);
   const locale = language === "vi" ? "vi-VN" : "en-US";
   const filterLabels: Record<NotificationFilter, string> =
@@ -216,6 +223,11 @@ export default function InboxScreen() {
             accessibilityRole="button"
             accessibilityLabel={notification.title || notification.type}
             onPress={() => void open(notification)}
+            onLongPress={() => {
+              if (!notification.read && !markRead.isPending)
+                markRead.mutate(notification.id);
+            }}
+            delayLongPress={280}
             style={styles.notification}
           >
             <View

@@ -92,8 +92,18 @@ export default function ProjectHomeScreen() {
               const severe =
                 alert.severity === "HIGH" || alert.severity === "CRITICAL";
               return (
-                <View
+                <MotionPressable
                   key={`${alert.type}-${index}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${alert.type}, ${alert.count}`}
+                  onPress={() => {
+                    const route = alert.type.includes("MILESTONE")
+                      ? "milestones"
+                      : alert.type.includes("CYCLE")
+                        ? "cycles"
+                        : "board";
+                    go(route);
+                  }}
                   style={[styles.alertRow, index > 0 && styles.divider]}
                 >
                   <Ionicons
@@ -106,7 +116,13 @@ export default function ProjectHomeScreen() {
                     {alert.type.replaceAll("_", " ")}
                   </Text>
                   <Text style={styles.alertCount}>{alert.count}</Text>
-                </View>
+                  <Ionicons
+                    accessible={false}
+                    name="chevron-forward"
+                    size={15}
+                    color={ui.colors.textMuted}
+                  />
+                </MotionPressable>
               );
             })}
           </View>

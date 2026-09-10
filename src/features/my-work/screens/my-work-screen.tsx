@@ -1,14 +1,15 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { router } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  IssueCompletionButton,
+  IssueQuickActionsSheet,
+} from "@/features/issues/public";
+import type { Issue } from "@/shared/contracts";
 import { SectionList, StyleSheet, Text, View } from "react-native";
 import { EmptyState, Screen } from "@/shared/components/ui/screen";
 import { MotionPressable } from "@/shared/components/ui/motion";
-import {
-  priorityColor,
-  statusCategoryColor,
-  type AppTheme,
-} from "@/shared/components/ui/theme";
+import { priorityColor, type AppTheme } from "@/shared/components/ui/theme";
 import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import { useAuth } from "@/providers/auth-provider";
@@ -18,6 +19,7 @@ export default function MyWorkScreen() {
   const { user, orgId } = useAuth();
   const { theme: ui, language, t } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
+  const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
   const { query, issues, sections } = useMyWork(orgId, user?.id);
   const pullRefresh = usePullToRefresh(() => query.refetch());
   const locale = language === "vi" ? "vi-VN" : "en-US";
@@ -66,19 +68,11 @@ export default function MyWorkScreen() {
                 params: { identifier: issue.identifier },
               })
             }
+            onLongPress={() => setQuickIssue(issue)}
+            delayLongPress={280}
             style={styles.item}
           >
-            <View
-              style={[
-                styles.statusMarker,
-                {
-                  backgroundColor: statusCategoryColor(
-                    ui,
-                    issue.status?.category,
-                  ),
-                },
-              ]}
-            />
+            <IssueCompletionButton issue={issue} />
             <View style={styles.copy}>
               <View style={styles.topRow}>
                 <Text style={styles.identifier}>{issue.identifier}</Text>
@@ -122,6 +116,10 @@ export default function MyWorkScreen() {
             />
           </MotionPressable>
         )}
+      />
+      <IssueQuickActionsSheet
+        issue={quickIssue}
+        onClose={() => setQuickIssue(null)}
       />
     </Screen>
   );

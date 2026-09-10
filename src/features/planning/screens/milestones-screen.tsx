@@ -222,7 +222,13 @@ export default function MilestonesScreen() {
           />
           <View style={styles.riskList}>
             {riskItems.slice(0, 5).map((milestone) => (
-              <View key={milestone.id} style={styles.riskRow}>
+              <MotionPressable
+                key={milestone.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${milestone.title}, ${milestone.health_status}`}
+                onPress={() => setSelected(milestone)}
+                style={styles.riskRow}
+              >
                 <Ionicons
                   name="warning-outline"
                   size={18}
@@ -240,7 +246,13 @@ export default function MilestonesScreen() {
                     {milestone.health_status} · {dueLabel(milestone)}
                   </Text>
                 </View>
-              </View>
+                <Ionicons
+                  accessible={false}
+                  name="chevron-forward"
+                  size={15}
+                  color={ui.colors.textMuted}
+                />
+              </MotionPressable>
             ))}
           </View>
         </>

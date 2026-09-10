@@ -22,6 +22,7 @@ import type { AppTheme } from "@/shared/components/ui/theme";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import { useAuth } from "@/providers/auth-provider";
 import type { Issue, Project } from "@/shared/contracts";
+import { IssueQuickActionsSheet } from "@/features/issues/public";
 import { useGlobalSearch } from "../hooks/use-global-search";
 
 type SearchItem =
@@ -42,6 +43,7 @@ export default function SearchScreen() {
     resolvedTheme,
   } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
+  const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
   const [query, setQuery] = useState("");
   const result = useGlobalSearch(orgId, query);
   const normalizedQuery = query.trim();
@@ -333,6 +335,8 @@ export default function SearchScreen() {
               accessibilityRole="button"
               accessibilityLabel={`${issue.identifier}, ${issue.title}`}
               onPress={() => openIssue(issue.identifier)}
+              onLongPress={() => setQuickIssue(issue)}
+              delayLongPress={280}
               style={styles.resultRow}
             >
               <View style={styles.issueIcon}>
@@ -355,6 +359,10 @@ export default function SearchScreen() {
             </MotionPressable>
           );
         }}
+      />
+      <IssueQuickActionsSheet
+        issue={quickIssue}
+        onClose={() => setQuickIssue(null)}
       />
     </Screen>
   );

@@ -1,5 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
+import { IssueQuickActionsSheet, issuesApi } from "@/features/issues/public";
+import type { Issue } from "@/shared/contracts";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
@@ -34,6 +36,7 @@ export default function PlanningScreen() {
   const createCycle = useCreateCycle(projectId);
   const createMilestone = useCreateMilestone(projectId);
   const [mode, setMode] = useState<CreateMode>(null);
+  const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
   const [name, setName] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
@@ -220,6 +223,20 @@ export default function PlanningScreen() {
                       params: { identifier: issue.identifier },
                     })
                   }
+                  onLongPress={() => {
+                    void issuesApi
+                      .get(issue.identifier)
+                      .then(setQuickIssue)
+                      .catch((error) =>
+                        presentError(
+                          language === "vi"
+                            ? "Không thể tải thao tác nhanh"
+                            : "Could not load quick actions",
+                          error,
+                        ),
+                      );
+                  }}
+                  delayLongPress={280}
                   style={styles.eventCard}
                 >
                   <Pill
@@ -282,6 +299,11 @@ export default function PlanningScreen() {
           <Text style={styles.planLabel}>Milestones</Text>
         </MotionPressable>
       </View>
+
+      <IssueQuickActionsSheet
+        issue={quickIssue}
+        onClose={() => setQuickIssue(null)}
+      />
 
       <BottomSheet
         visible={mode !== null}

@@ -38,6 +38,7 @@ export function useNotificationInbox(filter: NotificationFilter) {
     notifications,
     unread,
     markAll,
+    markRead,
     items,
     prepareOpen,
     refresh: async () => {

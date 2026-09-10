@@ -3,7 +3,13 @@ import { useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Button, Field } from "@/shared/components/ui/primitives";
-import { BottomSheet, GlassIconButton } from "@/shared/components/ui/mobile";
+import {
+  BottomSheet,
+  GlassIconButton,
+  ListGroup,
+  ListRow,
+} from "@/shared/components/ui/mobile";
+import type { Project } from "@/shared/contracts";
 import { EmptyState, Screen } from "@/shared/components/ui/screen";
 import { MotionPressable } from "@/shared/components/ui/motion";
 import type { AppTheme } from "@/shared/components/ui/theme";
@@ -22,6 +28,7 @@ export default function ProjectsScreen() {
   const pullRefresh = usePullToRefresh(() => projects.refetch());
   const create = useCreateProject();
   const [open, setOpen] = useState(false);
+  const [quickProject, setQuickProject] = useState<Project | null>(null);
   const [key, setKey] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -106,6 +113,8 @@ export default function ProjectsScreen() {
                 params: { projectId: project.id },
               })
             }
+            onLongPress={() => setQuickProject(project)}
+            delayLongPress={280}
             style={styles.projectRow}
           >
             <View style={styles.projectDot} />
@@ -134,6 +143,57 @@ export default function ProjectsScreen() {
           </MotionPressable>
         )}
       />
+
+      <BottomSheet
+        visible={Boolean(quickProject)}
+        title={quickProject?.name ?? ""}
+        subtitle={quickProject?.key}
+        onClose={() => setQuickProject(null)}
+      >
+        <ListGroup>
+          <ListRow
+            first
+            icon="add-circle-outline"
+            label={language === "vi" ? "Tạo công việc" : "Create task"}
+            onPress={() => {
+              if (!quickProject) return;
+              const projectId = quickProject.id;
+              setQuickProject(null);
+              router.push({ pathname: "/quick-create", params: { projectId } });
+            }}
+          />
+          <ListRow
+            icon="checkbox-outline"
+            label={language === "vi" ? "Công việc" : "Tasks"}
+            onPress={() => {
+              if (!quickProject) return;
+              const projectId = quickProject.id;
+              setQuickProject(null);
+              router.push(`/project/${projectId}/board` as never);
+            }}
+          />
+          <ListRow
+            icon="calendar-outline"
+            label={language === "vi" ? "Lịch" : "Planning"}
+            onPress={() => {
+              if (!quickProject) return;
+              const projectId = quickProject.id;
+              setQuickProject(null);
+              router.push(`/project/${projectId}/planning` as never);
+            }}
+          />
+          <ListRow
+            icon="people-outline"
+            label={language === "vi" ? "Thành viên" : "Members"}
+            onPress={() => {
+              if (!quickProject) return;
+              const projectId = quickProject.id;
+              setQuickProject(null);
+              router.push(`/project/${projectId}/members` as never);
+            }}
+          />
+        </ListGroup>
+      </BottomSheet>
 
       <BottomSheet
         visible={open}
