@@ -40,6 +40,8 @@ pnpm run update:internal -- --message "Describe the update"
 
 When the installed app is opened or returns to the foreground, it checks for an update. If one is available, the user is offered **Update now** or **Later**. Choosing **Update now** downloads the update and reloads AI-PM into the new bundle.
 
+While the update is being applied, AI-PM keeps a full-screen update surface visible. It shows `expo-updates` download progress when the server exposes enough information to calculate it, falls back to an explicit loading state otherwise, and switches to a native reload screen while the JavaScript runtime restarts. This avoids dropping the user back onto the current screen or flashing a blank/default background during the bundle swap.
+
 ## When a new IPA is still required
 
 Build and install a new IPA when native compatibility changes, including:

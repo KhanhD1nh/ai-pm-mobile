@@ -26,6 +26,7 @@ import {
   type OfflineQueueStats,
 } from "@/infrastructure/persistence/offline-mutation-queue";
 import { useAuth } from "@/providers/auth-provider";
+import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import {
   checkForOtaUpdate,
   downloadAndApplyOtaUpdate,
@@ -35,6 +36,7 @@ import {
 export function useMobileSettings() {
   const queryClient = useQueryClient();
   const { orgId } = useAuth();
+  const { theme: ui } = useAppPreferences();
   const otaState = Updates.useUpdates();
   const [busy, setBusy] = useState(false);
   const [currentPushDeviceId, setCurrentPushDeviceIdState] = useState<
@@ -148,7 +150,12 @@ export function useMobileSettings() {
     setUpdateBusy(true);
     setUpdateOperation("downloading");
     try {
-      await downloadAndApplyOtaUpdate();
+      await downloadAndApplyOtaUpdate({
+        reloadScreenAppearance: {
+          backgroundColor: ui.colors.bg,
+          spinnerColor: ui.colors.accentStrong,
+        },
+      });
     } finally {
       setUpdateBusy(false);
       setUpdateOperation("idle");

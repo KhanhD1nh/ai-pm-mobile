@@ -8,6 +8,39 @@ export type OtaUpdateCheck =
 export type OtaSupportReason =
   "web" | "development-build" | "updates-disabled" | null;
 
+export type OtaApplyPhase = "idle" | "downloading" | "restarting";
+
+export type OtaReloadScreenAppearance = {
+  backgroundColor: string;
+  spinnerColor: string;
+};
+
+type OtaApplyOptions = {
+  reloadScreenAppearance?: OtaReloadScreenAppearance;
+};
+
+let otaApplyPhase: OtaApplyPhase = "idle";
+const otaApplyPhaseListeners = new Set<() => void>();
+
+function setOtaApplyPhase(phase: OtaApplyPhase) {
+  if (otaApplyPhase === phase) return;
+  otaApplyPhase = phase;
+  for (const listener of otaApplyPhaseListeners) listener();
+}
+
+export function getOtaApplyPhase() {
+  return otaApplyPhase;
+}
+
+export function subscribeOtaApplyPhase(listener: () => void) {
+  otaApplyPhaseListeners.add(listener);
+  return () => otaApplyPhaseListeners.delete(listener);
+}
+
+function waitForNextRenderFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 function getOtaSupportReason(): OtaSupportReason {
   if (Platform.OS === "web") return "web";
   if (__DEV__) return "development-build";
@@ -47,10 +80,33 @@ export async function checkForOtaUpdate(): Promise<OtaUpdateCheck> {
   }
 }
 
-export async function downloadAndApplyOtaUpdate() {
+export async function downloadAndApplyOtaUpdate(options: OtaApplyOptions = {}) {
   if (!isOtaUpdateSupported()) return;
-  await Updates.fetchUpdateAsync();
-  await Updates.reloadAsync();
+
+  setOtaApplyPhase("downloading");
+  await waitForNextRenderFrame();
+
+  try {
+    await Updates.fetchUpdateAsync();
+    setOtaApplyPhase("restarting");
+    await waitForNextRenderFrame();
+
+    const appearance = options.reloadScreenAppearance;
+    await Updates.reloadAsync({
+      reloadScreenOptions: {
+        backgroundColor: appearance?.backgroundColor,
+        fade: true,
+        spinner: {
+          enabled: true,
+          color: appearance?.spinnerColor,
+          size: "large",
+        },
+      },
+    });
+  } catch (error) {
+    setOtaApplyPhase("idle");
+    throw error;
+  }
 }
 
 export function getOtaUpdateInfo() {

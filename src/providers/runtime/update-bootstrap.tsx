@@ -1,16 +1,26 @@
-import { useCallback, useEffect, useRef } from "react";
+import * as Updates from "expo-updates";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { Alert, AppState } from "react-native";
 import {
   checkForOtaUpdate,
   downloadAndApplyOtaUpdate,
+  getOtaApplyPhase,
+  subscribeOtaApplyPhase,
 } from "@/infrastructure/updates/update-service";
+import { AppUpdateOverlay } from "@/shared/components/ui/app-update-overlay";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 
 const FOREGROUND_CHECK_COOLDOWN_MS = 15 * 60 * 1000;
 const INITIAL_CHECK_DELAY_MS = 1_200;
 
 export function UpdateBootstrap() {
-  const { language } = useAppPreferences();
+  const { language, theme: ui } = useAppPreferences();
+  const otaState = Updates.useUpdates();
+  const applyPhase = useSyncExternalStore(
+    subscribeOtaApplyPhase,
+    getOtaApplyPhase,
+    getOtaApplyPhase,
+  );
   const checkingRef = useRef(false);
   const dismissedForSessionRef = useRef(false);
   const lastCheckAtRef = useRef(0);
@@ -39,7 +49,12 @@ export function UpdateBootstrap() {
           {
             text: vi ? "Cập nhật ngay" : "Update now",
             onPress: () => {
-              void downloadAndApplyOtaUpdate().catch((error) => {
+              void downloadAndApplyOtaUpdate({
+                reloadScreenAppearance: {
+                  backgroundColor: ui.colors.bg,
+                  spinnerColor: ui.colors.accentStrong,
+                },
+              }).catch((error) => {
                 Alert.alert(
                   vi ? "Không thể cập nhật" : "Update failed",
                   error instanceof Error ? error.message : String(error),
@@ -55,7 +70,7 @@ export function UpdateBootstrap() {
     } finally {
       checkingRef.current = false;
     }
-  }, [vi]);
+  }, [ui.colors.accentStrong, ui.colors.bg, vi]);
 
   useEffect(() => {
     const initialTimer = setTimeout(() => void check(), INITIAL_CHECK_DELAY_MS);
@@ -69,5 +84,29 @@ export function UpdateBootstrap() {
     };
   }, [check]);
 
-  return null;
+  const overlayPhase =
+    applyPhase !== "idle"
+      ? applyPhase
+      : otaState.isRestarting
+        ? "restarting"
+        : otaState.isDownloading
+          ? "downloading"
+          : null;
+  const downloadProgress =
+    overlayPhase === "downloading" &&
+    typeof otaState.downloadProgress === "number"
+      ? Math.min(1, Math.max(0, otaState.downloadProgress))
+      : overlayPhase === "restarting"
+        ? 1
+        : null;
+
+  return (
+    <AppUpdateOverlay
+      visible={overlayPhase !== null}
+      phase={overlayPhase ?? "downloading"}
+      progress={downloadProgress}
+      ui={ui}
+      vi={vi}
+    />
+  );
 }
