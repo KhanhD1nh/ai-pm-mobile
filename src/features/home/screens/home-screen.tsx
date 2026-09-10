@@ -1,6 +1,6 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   IssueCompletionButton,
   IssueQuickActionsSheet,
@@ -14,6 +14,7 @@ import type { AppTheme } from "@/shared/components/ui/theme";
 import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import { useAuth } from "@/providers/auth-provider";
+import { updateAiPmFocusWidget } from "@/infrastructure/widgets/ai-pm-widget-service";
 import { useHomeDashboard } from "../hooks/use-home-dashboard";
 
 export default function HomeScreen() {
@@ -22,10 +23,8 @@ export default function HomeScreen() {
   const styles = useMemo(() => createStyles(ui), [ui]);
   const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
   const org = organizations.find((item) => item.id === orgId);
-  const { projects, overdue, inProgress, refresh } = useHomeDashboard(
-    orgId,
-    user?.id,
-  );
+  const { projects, issues, unread, overdue, inProgress, refresh } =
+    useHomeDashboard(orgId, user?.id);
   const pullRefresh = usePullToRefresh(refresh);
   const locale = language === "vi" ? "vi-VN" : "en-US";
   const firstName =
@@ -54,6 +53,63 @@ export default function HomeScreen() {
         : language === "vi"
           ? "Không có việc gấp lúc này."
           : "Nothing urgent right now.";
+
+  useEffect(() => {
+    if (!user || !orgId || !issues.data || projects.data === undefined) return;
+
+    const actionable = issues.data.filter(
+      (issue) =>
+        !["DONE", "CANCELED", "REJECTED"].includes(
+          issue.status?.category ?? "",
+        ),
+    );
+    const focusIssue = overdue[0] ?? inProgress[0] ?? actionable[0];
+    const now = new Date();
+
+    void updateAiPmFocusWidget({
+      title: "AI-PM",
+      primaryMetric: String(overdue.length),
+      primaryMetricLabel: language === "vi" ? "quá hạn" : "overdue",
+      secondaryMetric: String(inProgress.length),
+      secondaryMetricLabel: language === "vi" ? "đang làm" : "in progress",
+      focusIdentifier: focusIssue?.identifier ?? "✓",
+      focusTitle:
+        focusIssue?.title ??
+        (language === "vi"
+          ? "Không có việc cần chú ý"
+          : "Nothing needs attention"),
+      focusMeta: focusIssue
+        ? [
+            focusIssue.status?.name,
+            focusIssue.due_date
+              ? new Date(
+                  `${focusIssue.due_date.slice(0, 10)}T00:00:00`,
+                ).toLocaleDateString(locale)
+              : undefined,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : `${unread.data?.unread ?? 0} ${language === "vi" ? "thông báo chưa đọc" : "unread notifications"}`,
+      primaryUrl: focusIssue
+        ? `aipm://issue/${focusIssue.identifier}`
+        : "aipm://my-work",
+      updatedLabel: now.toLocaleTimeString(locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    });
+  }, [
+    inProgress,
+    issues.data,
+    issues.dataUpdatedAt,
+    language,
+    locale,
+    orgId,
+    overdue,
+    projects.data,
+    unread.data?.unread,
+    user,
+  ]);
 
   return (
     <Screen

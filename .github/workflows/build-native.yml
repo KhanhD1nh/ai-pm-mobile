@@ -1,0 +1,163 @@
+name: Build Native Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_ios:
+        description: Build unsigned iOS IPA
+        required: true
+        default: true
+        type: boolean
+      build_android:
+        description: Build Android release APK
+        required: true
+        default: true
+        type: boolean
+      ios_bundle_identifier:
+        description: Bundle ID used before re-signing the unsigned IPA
+        required: false
+        default: com.aipm.mobile
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CI: "1"
+  EXPO_NO_TELEMETRY: "1"
+  EXPO_PUBLIC_API_BASE_URL: ${{ vars.EXPO_PUBLIC_API_BASE_URL }}
+  AI_PM_UPDATE_CHANNEL: internal
+
+jobs:
+  ios:
+    name: Build unsigned IPA
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_ios }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      AI_PM_IOS_DISTRIBUTION: esign
+      AI_PM_IOS_BUNDLE_IDENTIFIER: ${{ inputs.ios_bundle_identifier || 'com.aipm.mobile' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Validate build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_PUBLIC_API_BASE_URL:-}" ]; then
+            echo "Repository variable EXPO_PUBLIC_API_BASE_URL is required."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import re, subprocess, sys
+          output = subprocess.check_output(["xcodebuild", "-version"], text=True)
+          print(output.strip())
+          match = re.search(r"Xcode\s+(\d+)\.(\d+)", output)
+          if not match or tuple(map(int, match.groups())) < (26, 4):
+              sys.exit("Expo SDK 57 requires Xcode 26.4 or newer")
+          PY
+          day_prefix="$(date -u +%y%j)"
+          run_suffix="$((GITHUB_RUN_NUMBER % 10000))"
+          printf -v build_number '%s%04d' "$day_prefix" "$run_suffix"
+          echo "AI_PM_BUILD_NUMBER=$build_number" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify project
+        run: pnpm run verify
+
+      - name: Generate iOS native project
+        run: pnpm exec expo prebuild --platform ios --clean --no-install
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+
+      - name: Build unsigned IPA
+        run: bash scripts/build-unsigned-ios.sh
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-PM-ios-unsigned-${{ github.run_number }}
+          path: AI-PM-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+  android:
+    name: Build Android APK
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.build_android }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.20.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Validate build environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${EXPO_PUBLIC_API_BASE_URL:-}" ]; then
+            echo "Repository variable EXPO_PUBLIC_API_BASE_URL is required."
+            exit 1
+          fi
+          day_prefix="$(date -u +%y%j)"
+          run_suffix="$((GITHUB_RUN_NUMBER % 10000))"
+          printf -v build_number '%s%04d' "$day_prefix" "$run_suffix"
+          echo "AI_PM_BUILD_NUMBER=$build_number" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify project
+        run: pnpm run verify
+
+      - name: Generate Android native project
+        run: pnpm exec expo prebuild --platform android --clean --no-install
+
+      - name: Build release APK
+        run: bash scripts/build-android-apk.sh
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-PM-android-apk-${{ github.run_number }}
+          path: AI-PM-android-release.apk
+          if-no-files-found: error
+          retention-days: 14

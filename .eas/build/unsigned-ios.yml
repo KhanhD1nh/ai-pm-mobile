@@ -24,66 +24,9 @@ build:
 
     - run:
         name: Compile unsigned release iPhone app
-        working_directory: ./ios
         command: |
           set -euo pipefail
-
-          WORKSPACE="$(find . -maxdepth 1 -name '*.xcworkspace' -print -quit)"
-          if [ -z "$WORKSPACE" ]; then
-            echo "No Xcode workspace found after prebuild"
-            exit 1
-          fi
-
-          SCHEME="$(xcodebuild -list -json -workspace "$WORKSPACE" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["workspace"]["schemes"][0])')"
-          echo "Workspace: $WORKSPACE"
-          echo "Scheme: $SCHEME"
-
-          ENTITLEMENTS_FILE="$(find . -name '*.entitlements' -print -quit)"
-          if [ -z "$ENTITLEMENTS_FILE" ]; then
-            echo "No iOS entitlements file found after prebuild"
-            exit 1
-          fi
-          echo "Entitlements: $ENTITLEMENTS_FILE"
-          APNS_ENV="$(/usr/libexec/PlistBuddy -c 'Print :aps-environment' "$ENTITLEMENTS_FILE" 2>/dev/null || true)"
-          if [ "$APNS_ENV" != "production" ]; then
-            echo "Push Notifications entitlement is missing from the native project"
-            echo "Expected aps-environment=production, found: ${APNS_ENV:-missing}"
-            exit 1
-          fi
-
-          rm -rf ../build-ios ../unsigned-ipa ../AI-PM-unsigned.ipa
-
-          xcodebuild \
-            -workspace "$WORKSPACE" \
-            -scheme "$SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath ../build-ios \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY='' \
-            DEVELOPMENT_TEAM='' \
-            build
-
-          APP_PATH="$(find ../build-ios/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)"
-          if [ -z "$APP_PATH" ]; then
-            echo "Unsigned .app was not produced"
-            exit 1
-          fi
-
-          echo "App: $APP_PATH"
-          echo "Checking unsigned ESign distribution configuration"
-          if [ -d "$APP_PATH/_CodeSignature" ] || [ -f "$APP_PATH/embedded.mobileprovision" ]; then
-            echo "Build unexpectedly contains signing artifacts"
-            exit 1
-          fi
-
-          mkdir -p ../unsigned-ipa/Payload
-          /usr/bin/ditto "$APP_PATH" "../unsigned-ipa/Payload/$(basename "$APP_PATH")"
-          cd ../unsigned-ipa
-          /usr/bin/ditto -c -k --keepParent Payload ../AI-PM-unsigned.ipa
-          /usr/bin/unzip -l ../AI-PM-unsigned.ipa
+          bash scripts/build-unsigned-ios.sh
 
     - eas/upload_artifact:
         name: Upload unsigned IPA
