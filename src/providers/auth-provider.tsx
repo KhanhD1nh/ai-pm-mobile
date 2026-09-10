@@ -13,7 +13,10 @@ import { authApi } from "@/features/auth/public";
 import { organizationsApi } from "@/features/organizations/public";
 import { sessionStorage } from "@/infrastructure/auth/session-storage";
 import { clearOfflineMutationQueue } from "@/infrastructure/persistence/offline-mutation-queue";
-import { clearAiPmFocusWidget } from "@/infrastructure/widgets/ai-pm-widget-service";
+import {
+  clearAiPmFocusWidget,
+  ensureAiPmFocusWidgetSnapshot,
+} from "@/infrastructure/widgets/ai-pm-widget-service";
 import { queryPersister } from "@/infrastructure/persistence/query-persister";
 import type { AuthResponse, Organization, User } from "@/shared/contracts";
 
@@ -51,6 +54,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     let cancelled = false;
+
+    void ensureAiPmFocusWidgetSnapshot();
 
     void sessionStorage
       .getToken()

@@ -1,5 +1,10 @@
 import { HStack, Image, Link, Spacer, Text, VStack } from "@expo/ui/swift-ui";
-import { font, foregroundStyle, padding } from "@expo/ui/swift-ui/modifiers";
+import {
+  containerBackground,
+  font,
+  foregroundStyle,
+  padding,
+} from "@expo/ui/swift-ui/modifiers";
 import { createWidget, type WidgetEnvironment } from "expo-widgets";
 
 export type AiPmFocusWidgetProps = {
@@ -21,21 +26,41 @@ const AiPmFocusWidgetLayout = (
 ) => {
   "widget";
 
+  // WidgetKit calls the gallery placeholder/snapshot with nil props before the
+  // host app has written its first timeline. Never read props directly here or
+  // the isolated widget runtime can fail and leave a black/blank preview.
+  const title = props?.title ?? "AI-PM";
+  const primaryMetric = props?.primaryMetric ?? "0";
+  const primaryMetricLabel = props?.primaryMetricLabel ?? "quá hạn";
+  const secondaryMetric = props?.secondaryMetric ?? "0";
+  const secondaryMetricLabel = props?.secondaryMetricLabel ?? "đang làm";
+  const focusIdentifier = props?.focusIdentifier ?? "AI-PM";
+  const focusTitle = props?.focusTitle ?? "Mở AI-PM để đồng bộ công việc";
+  const focusMeta = props?.focusMeta ?? "Dữ liệu sẽ tự cập nhật";
+  const primaryUrl = props?.primaryUrl ?? "aipm://my-work";
+  const updatedLabel = props?.updatedLabel ?? "Sẵn sàng";
+
   const accent = environment.colorScheme === "dark" ? "#85B8FF" : "#0052CC";
+  const primary = environment.colorScheme === "dark" ? "#F4F5F7" : "#172B4D";
   const secondary = environment.colorScheme === "dark" ? "#AEB7C4" : "#5E6C84";
+  const background = environment.colorScheme === "dark" ? "#1C1C1E" : "#FFFFFF";
 
   if (environment.widgetFamily === "systemSmall") {
     return (
-      <Link destination={props.primaryUrl}>
+      <Link destination={primaryUrl}>
         <VStack
           alignment="leading"
           spacing={8}
-          modifiers={[padding({ all: 14 })]}
+          modifiers={[
+            containerBackground(background, "widget"),
+            foregroundStyle(primary),
+            padding({ all: 14 }),
+          ]}
         >
           <HStack spacing={6}>
             <Image systemName="checkmark.circle.fill" color={accent} />
             <Text modifiers={[font({ size: 14, weight: "semibold" })]}>
-              {props.title}
+              {title}
             </Text>
           </HStack>
           <Spacer />
@@ -45,16 +70,16 @@ const AiPmFocusWidgetLayout = (
               foregroundStyle(accent),
             ]}
           >
-            {props.primaryMetric}
+            {primaryMetric}
           </Text>
           <Text modifiers={[font({ size: 12 }), foregroundStyle(secondary)]}>
-            {props.primaryMetricLabel}
+            {primaryMetricLabel}
           </Text>
           <Text modifiers={[font({ size: 12, weight: "semibold" })]}>
-            {props.focusIdentifier}
+            {focusIdentifier}
           </Text>
           <Text modifiers={[font({ size: 11 }), foregroundStyle(secondary)]}>
-            {props.focusTitle}
+            {focusTitle}
           </Text>
         </VStack>
       </Link>
@@ -62,20 +87,24 @@ const AiPmFocusWidgetLayout = (
   }
 
   return (
-    <Link destination={props.primaryUrl}>
+    <Link destination={primaryUrl}>
       <VStack
         alignment="leading"
         spacing={9}
-        modifiers={[padding({ all: 15 })]}
+        modifiers={[
+          containerBackground(background, "widget"),
+          foregroundStyle(primary),
+          padding({ all: 15 }),
+        ]}
       >
         <HStack spacing={7}>
           <Image systemName="checkmark.circle.fill" color={accent} />
           <Text modifiers={[font({ size: 15, weight: "semibold" })]}>
-            {props.title}
+            {title}
           </Text>
           <Spacer />
           <Text modifiers={[font({ size: 10 }), foregroundStyle(secondary)]}>
-            {props.updatedLabel}
+            {updatedLabel}
           </Text>
         </HStack>
         <HStack spacing={18}>
@@ -86,31 +115,31 @@ const AiPmFocusWidgetLayout = (
                 foregroundStyle(accent),
               ]}
             >
-              {props.primaryMetric}
+              {primaryMetric}
             </Text>
             <Text modifiers={[font({ size: 11 }), foregroundStyle(secondary)]}>
-              {props.primaryMetricLabel}
+              {primaryMetricLabel}
             </Text>
           </VStack>
           <VStack alignment="leading" spacing={1}>
             <Text modifiers={[font({ size: 24, weight: "bold" })]}>
-              {props.secondaryMetric}
+              {secondaryMetric}
             </Text>
             <Text modifiers={[font({ size: 11 }), foregroundStyle(secondary)]}>
-              {props.secondaryMetricLabel}
+              {secondaryMetricLabel}
             </Text>
           </VStack>
           <Spacer />
         </HStack>
         <VStack alignment="leading" spacing={2}>
           <Text modifiers={[font({ size: 12, weight: "semibold" })]}>
-            {props.focusIdentifier}
+            {focusIdentifier}
           </Text>
           <Text modifiers={[font({ size: 13, weight: "medium" })]}>
-            {props.focusTitle}
+            {focusTitle}
           </Text>
           <Text modifiers={[font({ size: 10 }), foregroundStyle(secondary)]}>
-            {props.focusMeta}
+            {focusMeta}
           </Text>
         </VStack>
       </VStack>
