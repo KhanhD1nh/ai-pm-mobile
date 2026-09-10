@@ -17,6 +17,7 @@ import {
   type ThemePreference,
 } from "@/shared/preferences/app-preferences-context";
 import { useAuth } from "@/providers/auth-provider";
+import { confirmLogout } from "../components/confirm-logout";
 
 type PreferenceSheet = "theme" | "language" | null;
 
@@ -210,7 +211,7 @@ export default function MoreScreen() {
           icon="log-out-outline"
           label={t("more.logout")}
           danger
-          onPress={() => void logout()}
+          onPress={() => confirmLogout(language, logout)}
         />
       </ListGroup>
 

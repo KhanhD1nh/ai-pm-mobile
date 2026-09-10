@@ -17,6 +17,7 @@ import {
   useChangePassword,
   useUpdateProfile,
 } from "../mutations/use-profile-mutations";
+import { confirmLogout } from "../components/confirm-logout";
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -153,7 +154,7 @@ export default function ProfileScreen() {
               : "Sign out from this device"
           }
           danger
-          onPress={() => void logout()}
+          onPress={() => confirmLogout(language, logout)}
         />
       </ListGroup>
     </Screen>
