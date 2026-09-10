@@ -12,7 +12,7 @@ import {
   ListRow,
   SectionHeader,
 } from "@/shared/components/ui/mobile";
-import { MotionPressable, SoftFade } from "@/shared/components/ui/motion";
+import { MotionPressable } from "@/shared/components/ui/motion";
 import { LoadingScreen, Screen } from "@/shared/components/ui/screen";
 import {
   priorityColor,
@@ -317,7 +317,7 @@ export default function IssueDetailScreen() {
       refreshing={pullRefresh.refreshing}
       onRefresh={pullRefresh.onRefresh}
     >
-      <SoftFade style={styles.hero}>
+      <View style={styles.hero}>
         <Text style={styles.identifier}>{data.identifier}</Text>
         <Text style={styles.issueTitle}>{data.title}</Text>
         <View style={styles.quickMeta}>
@@ -363,7 +363,7 @@ export default function IssueDetailScreen() {
             </Text>
           </MotionPressable>
         </View>
-      </SoftFade>
+      </View>
 
       <SectionHeader
         title={language === "vi" ? "Mô tả" : "Description"}

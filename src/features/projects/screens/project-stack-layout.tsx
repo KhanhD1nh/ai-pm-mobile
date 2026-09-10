@@ -10,7 +10,6 @@ export default function ProjectStackLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: ui.colors.bg },
-        freezeOnBlur: true,
       }}
     />
   );

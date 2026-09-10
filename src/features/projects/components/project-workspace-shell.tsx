@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams, usePathname } from "expo-router";
-import { useEffect, useMemo, type PropsWithChildren } from "react";
+import { useEffect, useMemo, useState, type PropsWithChildren } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/providers/auth-provider";
@@ -32,7 +32,23 @@ export function ProjectWorkspaceShell({ children }: PropsWithChildren) {
   const { orgId, selectOrganization } = useAuth();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const project = useProject(projectId);
-  const activeTab = resolveTab(pathname, projectId);
+  const resolvedTab = resolveTab(pathname, projectId);
+  const [tabSnapshot, setTabSnapshot] = useState<{
+    pathname: string;
+    activeTab: ProjectTab;
+  }>(() => ({
+    pathname,
+    activeTab: resolvedTab ?? "overview",
+  }));
+
+  // usePathname follows the globally selected route, including while this
+  // workspace screen is still mounted underneath a native push transition.
+  // Only commit paths that belong to this workspace. When a sibling/detail
+  // route becomes globally active, keep the outgoing screen geometry intact.
+  if (resolvedTab && pathname !== tabSnapshot.pathname) {
+    setTabSnapshot({ pathname, activeTab: resolvedTab });
+  }
+  const activeTab = resolvedTab ?? tabSnapshot.activeTab;
 
   useEffect(() => {
     const targetOrgId = project.data?.organization_id;
@@ -40,7 +56,6 @@ export function ProjectWorkspaceShell({ children }: PropsWithChildren) {
       void selectOrganization(targetOrgId);
   }, [orgId, project.data?.organization_id, selectOrganization]);
 
-  if (!activeTab) return <>{children}</>;
   if (project.isLoading && !project.data) return <LoadingScreen />;
   if (project.data?.organization_id && project.data.organization_id !== orgId)
     return <LoadingScreen />;
