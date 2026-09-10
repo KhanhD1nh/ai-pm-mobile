@@ -1,6 +1,9 @@
 const isEsignBuild = process.env.AI_PM_IOS_DISTRIBUTION === "esign";
 const esignBundleIdentifier =
   process.env.AI_PM_IOS_BUNDLE_IDENTIFIER || "com.aipm.mobile";
+const esignAppGroupIdentifier =
+  process.env.AI_PM_IOS_APP_GROUP_IDENTIFIER?.trim() ||
+  `group.${esignBundleIdentifier}`;
 const explicitUpdateChannel = process.env.AI_PM_UPDATE_CHANNEL?.trim();
 const updateChannel = isEsignBuild ? "internal" : explicitUpdateChannel;
 const rawBuildNumber = process.env.AI_PM_BUILD_NUMBER?.trim();
@@ -54,7 +57,9 @@ module.exports = ({ config }) => ({
       "expo-widgets",
       {
         bundleIdentifier: `${isEsignBuild ? esignBundleIdentifier : (config.ios?.bundleIdentifier ?? "com.aipm.mobile")}.widgets`,
-        groupIdentifier: `group.${isEsignBuild ? esignBundleIdentifier : (config.ios?.bundleIdentifier ?? "com.aipm.mobile")}`,
+        groupIdentifier: isEsignBuild
+          ? esignAppGroupIdentifier
+          : `group.${config.ios?.bundleIdentifier ?? "com.aipm.mobile"}`,
         widgets: widgetDefinitions,
       },
     ],

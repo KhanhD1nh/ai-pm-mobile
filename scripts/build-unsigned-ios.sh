@@ -75,8 +75,27 @@ fi
 
 APP_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
 WIDGET_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$WIDGET_EXTENSION/Info.plist")"
+APP_GROUP_ID="$(/usr/libexec/PlistBuddy -c 'Print :ExpoWidgetsAppGroupIdentifier' "$APP_PATH/Info.plist")"
+WIDGET_GROUP_ID="$(/usr/libexec/PlistBuddy -c 'Print :ExpoWidgetsAppGroupIdentifier' "$WIDGET_EXTENSION/Info.plist")"
+EXPECTED_WIDGET_BUNDLE_ID="${APP_BUNDLE_ID}.widgets"
+
 echo "App bundle: $APP_BUNDLE_ID"
 echo "Widget bundle: $WIDGET_BUNDLE_ID"
+echo "App group: $APP_GROUP_ID"
+
+if [ "$WIDGET_BUNDLE_ID" != "$EXPECTED_WIDGET_BUNDLE_ID" ]; then
+  echo "Widget bundle identifier must be nested under the app bundle identifier."
+  echo "Expected: $EXPECTED_WIDGET_BUNDLE_ID"
+  echo "Actual:   $WIDGET_BUNDLE_ID"
+  exit 1
+fi
+
+if [ -z "$APP_GROUP_ID" ] || [ "$APP_GROUP_ID" != "$WIDGET_GROUP_ID" ]; then
+  echo "App and widget must use the same non-empty ExpoWidgetsAppGroupIdentifier."
+  echo "App:    ${APP_GROUP_ID:-<missing>}"
+  echo "Widget: ${WIDGET_GROUP_ID:-<missing>}"
+  exit 1
+fi
 
 mkdir -p "$PACKAGE_DIR/Payload"
 /usr/bin/ditto "$APP_PATH" "$PACKAGE_DIR/Payload/$(basename "$APP_PATH")"

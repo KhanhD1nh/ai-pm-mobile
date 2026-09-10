@@ -18,12 +18,17 @@ on:
         required: false
         default: com.aipm.mobile
         type: string
+      ios_app_group_identifier:
+        description: App Group shared by the app and widget extension
+        required: false
+        default: group.com.aipm.mobile
+        type: string
   push:
     tags:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   CI: "1"
@@ -40,6 +45,7 @@ jobs:
     env:
       AI_PM_IOS_DISTRIBUTION: esign
       AI_PM_IOS_BUNDLE_IDENTIFIER: ${{ inputs.ios_bundle_identifier || 'com.aipm.mobile' }}
+      AI_PM_IOS_APP_GROUP_IDENTIFIER: ${{ inputs.ios_app_group_identifier || 'group.com.aipm.mobile' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,6 +61,11 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.3"
 
       - name: Validate build environment
         shell: bash
@@ -93,11 +104,40 @@ jobs:
       - name: Build unsigned IPA
         run: bash scripts/build-unsigned-ios.sh
 
+      - name: Install pinned ipapatch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v2.1.3 \
+            https://github.com/asdfzxcvbn/ipapatch.git "$RUNNER_TEMP/ipapatch"
+          mkdir -p "$RUNNER_TEMP/bin"
+          (
+            cd "$RUNNER_TEMP/ipapatch"
+            go build -o "$RUNNER_TEMP/bin/ipapatch" .
+          )
+          chmod 0755 "$RUNNER_TEMP/bin/ipapatch"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/ipapatch" --version
+
+      - name: Patch sideload widget compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/patch-ios-sideload.sh AI-PM-unsigned.ipa AI-PM-sideload-patched.ipa
+
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: AI-PM-ios-unsigned-${{ github.run_number }}
           path: AI-PM-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload patched sideload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-PM-ios-sideload-patched-${{ github.run_number }}
+          path: AI-PM-sideload-patched.ipa
           if-no-files-found: error
           retention-days: 14
 
@@ -163,3 +203,30 @@ jobs:
           path: AI-PM-android-release.apk
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: [ios, android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: AI-PM-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            release-assets/AI-PM-sideload-patched.ipa \
+            release-assets/AI-PM-unsigned.ipa \
+            release-assets/AI-PM-android-release.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "AI-PM $GITHUB_REF_NAME" \
+            --generate-notes
