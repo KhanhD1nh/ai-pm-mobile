@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -6,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { AppDialog } from "@/shared/components/ui/app-dialog";
 import { Button } from "@/shared/components/ui/primitives";
 import {
   ListGroup,
@@ -17,6 +19,8 @@ import { usePullToRefresh } from "@/shared/hooks/use-pull-to-refresh";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import { presentError } from "@/shared/errors/present-error";
 import { useMobileSettings } from "../hooks/use-mobile-settings";
+
+type UpdateDialogKind = "available" | "up-to-date" | "unavailable";
 
 export default function MobileSettingsScreen() {
   const { theme: ui, language } = useAppPreferences();
@@ -44,6 +48,8 @@ export default function MobileSettingsScreen() {
   } = useMobileSettings();
   const pullRefresh = usePullToRefresh(() => devices.refetch());
   const locale = language === "vi" ? "vi-VN" : "en-US";
+  const [updateDialogKind, setUpdateDialogKind] =
+    useState<UpdateDialogKind | null>(null);
   const updateProgressPercent =
     updateProgress == null ? null : Math.round(updateProgress * 100);
   const updateActivityLabel =
@@ -134,32 +140,11 @@ export default function MobileSettingsScreen() {
     try {
       const result = await checkUpdate();
       if (result.status === "available") {
-        Alert.alert(
-          language === "vi" ? "Có bản cập nhật mới" : "Update available",
-          language === "vi"
-            ? "Bản OTA mới đã sẵn sàng."
-            : "A new OTA update is ready.",
-          [
-            { text: language === "vi" ? "Để sau" : "Later", style: "cancel" },
-            {
-              text: language === "vi" ? "Cập nhật ngay" : "Update now",
-              onPress: () =>
-                void applyUpdate().catch((error) =>
-                  presentError(
-                    language === "vi" ? "Không thể cập nhật" : "Update failed",
-                    error,
-                  ),
-                ),
-            },
-          ],
-        );
+        setUpdateDialogKind("available");
       } else if (result.status === "up-to-date") {
-        Alert.alert(language === "vi" ? "Đã là bản mới nhất" : "Up to date");
+        setUpdateDialogKind("up-to-date");
       } else {
-        Alert.alert(
-          language === "vi" ? "OTA chưa khả dụng" : "OTA unavailable",
-          otaUnavailableDetail,
-        );
+        setUpdateDialogKind("unavailable");
       }
     } catch (error) {
       presentError(
@@ -169,6 +154,16 @@ export default function MobileSettingsScreen() {
         error,
       );
     }
+  };
+
+  const handleApplyUpdate = () => {
+    setUpdateDialogKind(null);
+    void applyUpdate().catch((error) =>
+      presentError(
+        language === "vi" ? "Không thể cập nhật" : "Update failed",
+        error,
+      ),
+    );
   };
 
   return (
@@ -574,6 +569,63 @@ export default function MobileSettingsScreen() {
           </Text>
         </View>
       ) : null}
+
+      <AppDialog
+        visible={updateDialogKind !== null}
+        tone={
+          updateDialogKind === "up-to-date"
+            ? "success"
+            : updateDialogKind === "unavailable"
+              ? "warning"
+              : "info"
+        }
+        title={
+          updateDialogKind === "available"
+            ? language === "vi"
+              ? "Có bản cập nhật mới"
+              : "Update available"
+            : updateDialogKind === "up-to-date"
+              ? language === "vi"
+                ? "Đã là bản mới nhất"
+                : "Up to date"
+              : language === "vi"
+                ? "OTA chưa khả dụng"
+                : "OTA unavailable"
+        }
+        message={
+          updateDialogKind === "available"
+            ? language === "vi"
+              ? "Bản OTA mới đã sẵn sàng."
+              : "A new OTA update is ready."
+            : updateDialogKind === "up-to-date"
+              ? language === "vi"
+                ? "Bạn đang dùng phiên bản mới nhất của AI-PM."
+                : "You're using the latest version of AI-PM."
+              : otaUnavailableDetail
+        }
+        primaryAction={{
+          label:
+            updateDialogKind === "available"
+              ? language === "vi"
+                ? "Cập nhật ngay"
+                : "Update now"
+              : "OK",
+          onPress:
+            updateDialogKind === "available"
+              ? handleApplyUpdate
+              : () => setUpdateDialogKind(null),
+        }}
+        secondaryAction={
+          updateDialogKind === "available"
+            ? {
+                label: language === "vi" ? "Để sau" : "Later",
+                onPress: () => setUpdateDialogKind(null),
+              }
+            : undefined
+        }
+        onRequestClose={() => setUpdateDialogKind(null)}
+        ui={ui}
+      />
     </Screen>
   );
 }
