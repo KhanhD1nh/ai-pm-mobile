@@ -113,7 +113,7 @@ function AndroidTabItem({
       accessibilityState={create ? undefined : { selected: focused }}
       testID={create ? "android-create-action" : undefined}
       android_ripple={{
-        color: create ? ui.colors.accentSoft : ui.colors.surfaceContainerHigh,
+        color: create ? ui.colors.accentSoft : "transparent",
         borderless: true,
         foreground: true,
         radius: 28,
