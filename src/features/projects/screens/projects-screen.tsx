@@ -2,6 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
 import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
+import { WorkspaceSwitcher } from "@/features/organizations/public";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
   BottomSheet,
@@ -67,32 +68,43 @@ export default function ProjectsScreen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View style={styles.appBar}>
+            <View style={styles.topBar}>
+              <WorkspaceSwitcher />
+              <View style={styles.headerActions}>
+                <GlassIconButton
+                  icon="search-outline"
+                  label={language === "vi" ? "Tìm kiếm" : "Search"}
+                  onPress={() => router.push("/search")}
+                />
+                <MotionPressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("projects.createTitle")}
+                  android_ripple={
+                    Platform.OS === "android"
+                      ? {
+                          color: ui.colors.accentSoft,
+                          borderless: true,
+                          radius: ui.header.actionSize / 2,
+                        }
+                      : undefined
+                  }
+                  onPress={() => setOpen(true)}
+                  style={styles.createButton}
+                >
+                  <Ionicons
+                    accessible={false}
+                    name="add"
+                    size={ui.header.iconSize}
+                    color={ui.colors.inverseText}
+                  />
+                </MotionPressable>
+              </View>
+            </View>
             <View style={styles.headingCopy}>
-              <Text style={styles.eyebrow}>{currentOrg?.name ?? "AI-PM"}</Text>
               <Text style={styles.title}>{t("projects.title")}</Text>
               <Text style={styles.subtitle}>
                 {projects.data?.length ?? 0} {t("projects.projectCount")}
               </Text>
-            </View>
-            <View style={styles.headerActions}>
-              <GlassIconButton
-                icon="search-outline"
-                label={language === "vi" ? "Tìm kiếm" : "Search"}
-                onPress={() => router.push("/search")}
-              />
-              <MotionPressable
-                accessibilityRole="button"
-                accessibilityLabel={t("projects.createTitle")}
-                onPress={() => setOpen(true)}
-                style={styles.createButton}
-              >
-                <Ionicons
-                  accessible={false}
-                  name="add"
-                  size={22}
-                  color={ui.colors.inverseText}
-                />
-              </MotionPressable>
             </View>
           </View>
         }
@@ -238,33 +250,40 @@ const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
     listContent: { paddingBottom: 24 },
     appBar: {
+      paddingTop: 4,
+      paddingBottom: 10,
+      gap: 12,
+    },
+    topBar: {
+      minHeight: ui.header.actionSize,
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
-      paddingTop: 7,
-      paddingBottom: 2,
     },
     headingCopy: { flex: 1, minWidth: 0 },
-    eyebrow: { color: ui.colors.textMuted, ...ui.typography.caption },
     title: {
       color: ui.colors.text,
       ...ui.typography.screenTitle,
-      marginTop: 2,
     },
     subtitle: {
       color: ui.colors.textSecondary,
       ...ui.typography.body,
-      marginTop: 3,
+      marginTop: 2,
     },
-    headerActions: { flexDirection: "row", gap: 8 },
+    headerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
     createButton: {
-      width: Platform.OS === "android" ? 48 : 44,
-      height: Platform.OS === "android" ? 48 : 44,
-      borderRadius: Platform.OS === "android" ? 16 : 15,
+      width: ui.header.actionSize,
+      height: ui.header.actionSize,
+      borderRadius: ui.radius.round,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.accentStrong,
+      overflow: "hidden",
     },
     projectRow: {
       minHeight: 82,

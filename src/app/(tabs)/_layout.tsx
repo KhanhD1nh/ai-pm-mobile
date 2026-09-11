@@ -40,7 +40,7 @@ function AndroidTabItem({
 }) {
   const styles = useMemo(() => createStyles(ui), [ui]);
   const iconColor = focused
-    ? ui.colors.text
+    ? ui.colors.onPrimaryContainer
     : create
       ? ui.colors.accentStrong
       : ui.colors.textSecondary;
@@ -429,15 +429,15 @@ const createStyles = (ui: AppTheme) =>
       overflow: "hidden",
     },
     androidTabIconContainer: {
-      minWidth: 38,
-      height: 30,
-      paddingHorizontal: 8,
-      borderRadius: 15,
+      minWidth: 52,
+      height: 32,
+      paddingHorizontal: 10,
+      borderRadius: 16,
       alignItems: "center",
       justifyContent: "center",
     },
     androidTabIconContainerActive: {
-      backgroundColor: ui.colors.surfaceContainerHigh,
+      backgroundColor: ui.colors.primaryContainer,
     },
     androidTabLabel: {
       maxWidth: "100%",
@@ -448,7 +448,7 @@ const createStyles = (ui: AppTheme) =>
       textAlign: "center",
     },
     androidTabLabelActive: {
-      color: ui.colors.text,
+      color: ui.colors.onPrimaryContainer,
       fontWeight: "600",
     },
     androidCreateLabel: {

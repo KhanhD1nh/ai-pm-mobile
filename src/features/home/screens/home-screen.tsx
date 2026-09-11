@@ -1,6 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { WorkspaceSwitcher } from "@/features/organizations/public";
 import {
   IssueCompletionButton,
   IssueQuickActionsSheet,
@@ -18,11 +19,10 @@ import { updateAiPmFocusWidget } from "@/infrastructure/widgets/ai-pm-widget-ser
 import { useHomeDashboard } from "../hooks/use-home-dashboard";
 
 export default function HomeScreen() {
-  const { user, organizations, orgId } = useAuth();
+  const { user, orgId } = useAuth();
   const { theme: ui, language } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
   const [quickIssue, setQuickIssue] = useState<Issue | null>(null);
-  const org = organizations.find((item) => item.id === orgId);
   const { projects, issues, unread, overdue, inProgress, refresh } =
     useHomeDashboard(orgId, user?.id);
   const pullRefresh = usePullToRefresh(refresh);
@@ -117,27 +117,7 @@ export default function HomeScreen() {
       onRefresh={pullRefresh.onRefresh}
     >
       <View style={styles.topBar}>
-        <MotionPressable
-          accessibilityRole="button"
-          accessibilityLabel={org?.name ?? "AI-PM"}
-          onPress={() => router.push("/settings/organization")}
-          style={styles.workspaceButton}
-        >
-          <View style={styles.workspaceMark}>
-            <Text style={styles.workspaceMarkText}>
-              {(org?.name || "A").charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.workspaceName} numberOfLines={1}>
-            {org?.name ?? "AI-PM"}
-          </Text>
-          <Ionicons
-            accessible={false}
-            name="chevron-down"
-            size={14}
-            color={ui.colors.textMuted}
-          />
-        </MotionPressable>
+        <WorkspaceSwitcher />
         <GlassIconButton
           icon="search-outline"
           label={language === "vi" ? "Tìm kiếm" : "Search"}
@@ -324,45 +304,22 @@ const createStyles = (ui: AppTheme) =>
       justifyContent: "space-between",
       gap: 12,
     },
-    workspaceButton: {
-      minHeight: 44,
-      maxWidth: "72%",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      paddingRight: 8,
-    },
-    workspaceMark: {
-      width: 30,
-      height: 30,
-      borderRadius: 9,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: ui.colors.surfaceRaised,
-    },
-    workspaceMarkText: {
-      color: ui.colors.textSecondary,
-      fontSize: 12,
-      fontWeight: "700",
-    },
-    workspaceName: {
-      flexShrink: 1,
-      color: ui.colors.textSecondary,
-      ...ui.typography.bodyStrong,
-      fontSize: 14,
-    },
-    hero: { paddingTop: 16, paddingBottom: 8 },
+    hero: { paddingTop: 12, paddingBottom: 10 },
     date: {
       color: ui.colors.textMuted,
       ...ui.typography.caption,
       textTransform: "capitalize",
     },
-    heroTitle: { color: ui.colors.text, ...ui.typography.hero, marginTop: 4 },
+    heroTitle: {
+      color: ui.colors.text,
+      ...ui.typography.screenTitle,
+      marginTop: 3,
+    },
     heroSubtitle: {
       color: ui.colors.textSecondary,
-      fontSize: 16,
-      lineHeight: 23,
-      marginTop: 6,
+      fontSize: 15,
+      lineHeight: 22,
+      marginTop: 5,
       maxWidth: 420,
     },
     sectionAction: {
