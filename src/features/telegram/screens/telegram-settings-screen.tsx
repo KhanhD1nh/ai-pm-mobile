@@ -1,6 +1,6 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   AppState,
   Linking,
   StyleSheet,
@@ -126,7 +126,7 @@ export default function TelegramSettingsScreen() {
   };
 
   const confirmUnlink = () =>
-    Alert.alert(
+    showAppAlert(
       language === "vi" ? "Hủy liên kết Telegram?" : "Unlink Telegram?",
       language === "vi"
         ? "Bạn sẽ ngừng nhận thông báo Telegram cho tới khi liên kết lại."

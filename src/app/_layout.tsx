@@ -10,6 +10,8 @@ import { DeepLinkBootstrap } from "@/providers/runtime/deep-link-bootstrap";
 import { UpdateBootstrap } from "@/providers/runtime/update-bootstrap";
 import { CrashReportingBootstrap } from "@/providers/runtime/crash-reporting-bootstrap";
 import { OfflineMutationBootstrap } from "@/providers/runtime/offline-mutation-bootstrap";
+import { AppAlertHost } from "@/shared/components/ui/app-alert-host";
+import { AppSnackbarHost } from "@/shared/components/ui/app-snackbar-host";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 
 function AppShell() {
@@ -39,6 +41,8 @@ function AppShell() {
         translucent={Platform.OS === "android"}
         backgroundColor="transparent"
       />
+      <AppAlertHost />
+      <AppSnackbarHost />
       <UpdateBootstrap />
       <CrashReportingBootstrap />
       <OfflineMutationBootstrap />
@@ -56,6 +60,14 @@ function AppShell() {
         }}
       >
         <Stack.Screen name="login" options={{ animation: "fade" }} />
+        <Stack.Screen
+          name="quick-create"
+          options={{
+            presentation: "modal",
+            animation:
+              Platform.OS === "android" ? "slide_from_bottom" : "default",
+          }}
+        />
       </Stack>
       <AppLockBootstrap />
     </ThemeProvider>

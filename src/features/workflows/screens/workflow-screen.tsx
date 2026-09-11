@@ -1,6 +1,7 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
 import {
@@ -159,7 +160,7 @@ export default function WorkflowScreen() {
                   language === "vi" ? "Xóa trạng thái" : "Delete status"
                 }
                 onPress={() =>
-                  Alert.alert(
+                  showAppAlert(
                     language === "vi" ? "Xóa status?" : "Delete status?",
                     status.name,
                     [
@@ -260,9 +261,9 @@ const createStyles = (ui: AppTheme) =>
     },
     actions: { flexDirection: "row", gap: 5 },
     iconButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
+      borderRadius: Platform.OS === "android" ? 16 : 14,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.surfaceRaised,

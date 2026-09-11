@@ -1,4 +1,6 @@
-import { Alert, Switch, Text, View } from "react-native";
+import { showAppAlert } from "@/shared/feedback/app-alert";
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
+import { Switch, Text, View } from "react-native";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
   ListGroup,
@@ -79,7 +81,7 @@ export default function TelegramAdminScreen() {
       {
         onSuccess: () => {
           setToken("");
-          Alert.alert(vi ? "Đã lưu" : "Saved");
+          showAppSnackbar(vi ? "Đã lưu" : "Saved", { tone: "success" });
         },
         onError: (error) =>
           presentError(
@@ -103,33 +105,44 @@ export default function TelegramAdminScreen() {
     );
   const testBot = () =>
     test.mutate(token.trim() || undefined, {
-      onSuccess: (result) =>
-        Alert.alert(
-          result.ok
-            ? vi
-              ? "Kết nối thành công"
-              : "Connection successful"
-            : vi
-              ? "Kết nối thất bại"
-              : "Connection failed",
-          result.bot?.username ? `@${result.bot.username}` : result.error,
-        ),
+      onSuccess: (result) => {
+        if (result.ok) {
+          showAppSnackbar(
+            result.bot?.username
+              ? `${vi ? "Kết nối thành công" : "Connection successful"} · @${result.bot.username}`
+              : vi
+                ? "Kết nối thành công"
+                : "Connection successful",
+            { tone: "success" },
+          );
+          return;
+        }
+        showAppAlert(
+          vi ? "Kết nối thất bại" : "Connection failed",
+          result.error,
+          undefined,
+          { tone: "danger" },
+        );
+      },
       onError: (error) =>
         presentError(vi ? "Không thể test bot" : "Could not test bot", error),
     });
   const saveWebhook = () =>
     register.mutate(webhookUrl.trim() || undefined, {
-      onSuccess: (result) =>
-        Alert.alert(
-          result.ok
-            ? vi
-              ? "Webhook đã đăng ký"
-              : "Webhook registered"
-            : vi
-              ? "Webhook thất bại"
-              : "Webhook failed",
-          result.url || result.description || result.error,
-        ),
+      onSuccess: (result) => {
+        if (result.ok) {
+          showAppSnackbar(vi ? "Webhook đã đăng ký" : "Webhook registered", {
+            tone: "success",
+          });
+          return;
+        }
+        showAppAlert(
+          vi ? "Webhook thất bại" : "Webhook failed",
+          result.description || result.error,
+          undefined,
+          { tone: "danger" },
+        );
+      },
       onError: (error) =>
         presentError(
           vi ? "Không thể đăng ký webhook" : "Could not register webhook",

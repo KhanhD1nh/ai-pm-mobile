@@ -1,6 +1,7 @@
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
   ListGroup,
@@ -45,8 +46,9 @@ export default function AiBudgetScreen() {
   const submit = (input: BudgetInput) =>
     save.mutate(input, {
       onSuccess: () =>
-        Alert.alert(
+        showAppSnackbar(
           language === "vi" ? "Đã cập nhật AI Budget" : "AI Budget updated",
+          { tone: "success" },
         ),
       onError: (error) =>
         presentError(

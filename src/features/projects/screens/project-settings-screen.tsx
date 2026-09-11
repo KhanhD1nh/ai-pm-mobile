@@ -1,6 +1,7 @@
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
@@ -47,7 +48,10 @@ export default function ProjectSettingsScreen() {
     );
   const submit = (input: ProjectSettingsInput) =>
     save.mutate(input, {
-      onSuccess: () => Alert.alert(language === "vi" ? "Đã lưu" : "Saved"),
+      onSuccess: () =>
+        showAppSnackbar(language === "vi" ? "Đã lưu" : "Saved", {
+          tone: "success",
+        }),
       onError: (error) =>
         presentError(
           language === "vi" ? "Không thể lưu" : "Could not save",

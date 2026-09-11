@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import { normalizeError } from "./app-error";
 
 export function presentError(title: string, error: unknown) {
@@ -7,5 +7,5 @@ export function presentError(title: string, error: unknown) {
     normalized.code === "VERSION_CONFLICT"
       ? `${normalized.message}\nDữ liệu đã thay đổi ở nơi khác. Hãy tải lại rồi thử lại.`
       : normalized.message;
-  Alert.alert(title, message);
+  showAppAlert(title, message);
 }

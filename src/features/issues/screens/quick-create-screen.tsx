@@ -1,5 +1,6 @@
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
@@ -93,11 +94,11 @@ export default function QuickCreateScreen() {
         // rather than leaving the action tab selected.
         onSuccess: (issue) => {
           if (isOfflineMutationReceipt(issue)) {
-            Alert.alert(
-              language === "vi" ? "Đã lưu ngoại tuyến" : "Saved offline",
+            showAppSnackbar(
               language === "vi"
-                ? "Công việc sẽ được tạo tự động khi thiết bị có mạng trở lại."
-                : "The task will be created automatically when connectivity returns.",
+                ? "Đã lưu ngoại tuyến · Công việc sẽ tự tạo khi có mạng trở lại"
+                : "Saved offline · The task will be created when you're back online",
+              { tone: "warning", durationMs: 4500 },
             );
             router.replace("/(tabs)/(projects)/projects");
             return;

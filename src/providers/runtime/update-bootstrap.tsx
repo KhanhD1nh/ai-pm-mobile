@@ -106,6 +106,9 @@ export function UpdateBootstrap() {
     <>
       <AppDialog
         visible={dialog !== null}
+        icon={
+          dialog?.kind === "available" ? "cloud-download-outline" : undefined
+        }
         tone={dialog?.kind === "error" ? "danger" : "info"}
         title={
           dialog?.kind === "error"

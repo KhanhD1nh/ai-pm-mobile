@@ -87,6 +87,44 @@ export function GlassIconButton({
 }) {
   const { theme: ui, themePreference, resolvedTheme } = useAppPreferences();
   const styles = useMemo(() => createStyles(ui), [ui]);
+
+  if (Platform.OS === "android") {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected, disabled }}
+        disabled={disabled}
+        hitSlop={4}
+        android_ripple={{
+          color: ui.colors.accentSoft,
+          borderless: true,
+          radius: ui.header.actionSize / 2,
+        }}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.androidIconButton,
+          selected && styles.androidIconButtonSelected,
+          pressed && styles.androidIconButtonPressed,
+          disabled && styles.glassIconDisabledContent,
+        ]}
+      >
+        <Ionicons
+          accessible={false}
+          name={icon}
+          size={ui.header.iconSize}
+          color={
+            disabled
+              ? ui.colors.textMuted
+              : selected
+                ? ui.colors.accentStrong
+                : ui.colors.text
+          }
+        />
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -154,7 +192,13 @@ export function HeaderBackButton({
 
   return (
     <GlassIconButton
-      icon={kind === "close" ? "close" : "chevron-back"}
+      icon={
+        kind === "close"
+          ? "close"
+          : Platform.OS === "android"
+            ? "arrow-back"
+            : "chevron-back"
+      }
       label={label ?? defaultLabel}
       onPress={onPress}
     />
@@ -395,7 +439,7 @@ export function ListRow({
           <Ionicons
             accessible={false}
             name={icon}
-            size={18}
+            size={Platform.OS === "android" ? 20 : 18}
             color={danger ? ui.colors.danger : ui.colors.accentStrong}
           />
         </View>
@@ -434,6 +478,11 @@ export function ListRow({
     <MotionPressable
       accessibilityRole="button"
       accessibilityLabel={[label, detail, value].filter(Boolean).join(", ")}
+      android_ripple={
+        Platform.OS === "android"
+          ? { color: ui.colors.surfaceContainerHigh }
+          : undefined
+      }
       onPress={onPress}
       style={[styles.row, !first && styles.rowBorder]}
     >
@@ -768,6 +817,11 @@ export function ChoiceRow({
       accessibilityLabel={[label, description].filter(Boolean).join(", ")}
       accessibilityState={{ selected: active, disabled }}
       disabled={disabled}
+      android_ripple={
+        Platform.OS === "android"
+          ? { color: ui.colors.surfaceContainerHigh }
+          : undefined
+      }
       onPress={onPress}
       style={[
         styles.choice,
@@ -827,6 +881,20 @@ const createStyles = (ui: AppTheme) =>
       borderRadius: ui.header.actionSize / 2,
       flexShrink: 0,
     },
+    androidIconButton: {
+      width: ui.header.actionSize,
+      height: ui.header.actionSize,
+      borderRadius: ui.header.actionSize / 2,
+      flexShrink: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      backgroundColor: "transparent",
+    },
+    androidIconButtonSelected: {
+      backgroundColor: ui.colors.accentSoft,
+    },
+    androidIconButtonPressed: { opacity: 0.86 },
     glassIconButton: {
       width: ui.header.actionSize,
       height: ui.header.actionSize,
@@ -842,26 +910,29 @@ const createStyles = (ui: AppTheme) =>
     glassIconPressedContent: { opacity: 0.6 },
     glassIconDisabledContent: { opacity: 0.5 },
     searchBar: {
-      minHeight: 48,
+      minHeight: Platform.OS === "android" ? 56 : 48,
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      paddingLeft: 13,
+      gap: Platform.OS === "android" ? 10 : 8,
+      paddingLeft: Platform.OS === "android" ? 16 : 13,
       paddingRight: 8,
-      borderRadius: 13,
-      backgroundColor: ui.colors.surfaceRaised,
+      borderRadius: Platform.OS === "android" ? ui.radius.round : 13,
+      backgroundColor:
+        Platform.OS === "android"
+          ? ui.colors.surfaceContainerHigh
+          : ui.colors.surfaceRaised,
     },
     searchBarField: {
       flex: 1,
-      minHeight: 46,
-      height: 46,
+      minHeight: Platform.OS === "android" ? 54 : 46,
+      height: Platform.OS === "android" ? 54 : 46,
       borderWidth: 0,
       paddingHorizontal: 0,
       backgroundColor: "transparent",
     },
     searchClear: {
-      width: 32,
-      height: 32,
+      width: Platform.OS === "android" ? 40 : 32,
+      height: Platform.OS === "android" ? 40 : 32,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -922,9 +993,9 @@ const createStyles = (ui: AppTheme) =>
     },
     group: {
       overflow: "hidden",
-      borderRadius: ui.radius.lg,
+      borderRadius: Platform.OS === "android" ? ui.radius.xl : ui.radius.lg,
       backgroundColor: ui.colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: Platform.OS === "android" ? 0 : StyleSheet.hairlineWidth,
       borderColor: ui.colors.border,
     },
     groupPlain: {
@@ -936,30 +1007,40 @@ const createStyles = (ui: AppTheme) =>
       minHeight: 64,
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 11,
+      gap: Platform.OS === "android" ? 16 : 12,
+      paddingHorizontal: Platform.OS === "android" ? 16 : 14,
+      paddingVertical: Platform.OS === "android" ? 12 : 11,
+      overflow: "hidden",
     },
     rowBorder: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: ui.colors.border,
     },
     rowIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 10,
+      width: Platform.OS === "android" ? 40 : 34,
+      height: Platform.OS === "android" ? 40 : 34,
+      borderRadius: Platform.OS === "android" ? 20 : 10,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.accentSoft,
     },
     rowIconDanger: { backgroundColor: ui.colors.dangerSoft },
     rowCopy: { flex: 1, minWidth: 0 },
-    rowLabel: { color: ui.colors.text, ...ui.typography.bodyStrong },
+    rowLabel: {
+      color: ui.colors.text,
+      ...ui.typography.bodyStrong,
+      ...(Platform.OS === "android"
+        ? { fontSize: 16, lineHeight: 22, fontWeight: "500" as const }
+        : null),
+    },
     rowLabelDanger: { color: ui.colors.danger },
     rowDetail: {
       color: ui.colors.textMuted,
       ...ui.typography.caption,
       marginTop: 2,
+      ...(Platform.OS === "android"
+        ? { fontSize: 14, lineHeight: 20, fontWeight: "400" as const }
+        : null),
     },
     rowValue: {
       maxWidth: "42%",
@@ -1030,6 +1111,7 @@ const createStyles = (ui: AppTheme) =>
       paddingHorizontal: 13,
       paddingVertical: 10,
       backgroundColor: ui.colors.surface,
+      overflow: "hidden",
     },
     choiceActive: { backgroundColor: ui.colors.accentSoft },
     choiceDisabled: { opacity: 0.5 },

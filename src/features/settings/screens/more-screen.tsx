@@ -59,7 +59,15 @@ export default function MoreScreen() {
   const currentLanguageLabel = language === "vi" ? "Tiếng Việt" : "English";
 
   return (
-    <Screen title={t("more.title")}>
+    <Screen
+      title={
+        Platform.OS === "android"
+          ? language === "vi"
+            ? "Cài đặt"
+            : "Settings"
+          : t("more.title")
+      }
+    >
       <MotionPressable
         accessibilityRole="button"
         accessibilityLabel={t("more.profile")}
@@ -272,7 +280,7 @@ const createStyles = (ui: AppTheme) =>
     avatar: {
       width: 46,
       height: 46,
-      borderRadius: 15,
+      borderRadius: Platform.OS === "android" ? 23 : 15,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.surfaceRaised,
@@ -291,11 +299,20 @@ const createStyles = (ui: AppTheme) =>
       marginTop: 2,
     },
     sectionLabel: {
-      color: ui.colors.textMuted,
-      ...ui.typography.eyebrow,
-      textTransform: "uppercase",
-      marginTop: 10,
-      marginBottom: -2,
-      paddingHorizontal: 2,
+      color:
+        Platform.OS === "android"
+          ? ui.colors.accentStrong
+          : ui.colors.textMuted,
+      ...(Platform.OS === "android"
+        ? {
+            fontSize: 14,
+            lineHeight: 20,
+            fontWeight: "600" as const,
+          }
+        : ui.typography.eyebrow),
+      textTransform: Platform.OS === "android" ? "none" : "uppercase",
+      marginTop: Platform.OS === "android" ? 16 : 10,
+      marginBottom: Platform.OS === "android" ? 4 : -2,
+      paddingHorizontal: Platform.OS === "android" ? 16 : 2,
     },
   });

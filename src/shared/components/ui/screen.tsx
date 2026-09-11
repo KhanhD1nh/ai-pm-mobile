@@ -277,7 +277,7 @@ const createStyles = (ui: AppTheme) =>
     stackHeader: {
       width: "100%",
       maxWidth: 820,
-      minHeight: ui.header.actionSize,
+      minHeight: Platform.OS === "android" ? 56 : ui.header.actionSize,
       alignSelf: "center",
       flexDirection: "row",
       alignItems: "center",
@@ -285,15 +285,16 @@ const createStyles = (ui: AppTheme) =>
     stackCopy: {
       flex: 1,
       minWidth: 0,
-      alignItems: "center",
-      paddingHorizontal: 8,
+      alignItems: Platform.OS === "android" ? "flex-start" : "center",
+      paddingLeft: 8,
+      paddingRight: 8,
     },
     stackTitle: {
       color: ui.colors.text,
-      fontSize: 16.5,
-      lineHeight: 21,
-      fontWeight: "700",
-      letterSpacing: -0.15,
+      fontSize: Platform.OS === "android" ? 20 : 16.5,
+      lineHeight: Platform.OS === "android" ? 24 : 21,
+      fontWeight: Platform.OS === "android" ? "600" : "700",
+      letterSpacing: Platform.OS === "android" ? 0 : -0.15,
     },
     stackSubtitle: {
       maxWidth: "100%",
@@ -309,7 +310,10 @@ const createStyles = (ui: AppTheme) =>
       alignItems: "flex-end",
       justifyContent: "center",
     },
-    stackSpacer: { width: ui.header.actionSize, height: ui.header.actionSize },
+    stackSpacer: {
+      width: Platform.OS === "android" ? 0 : ui.header.actionSize,
+      height: ui.header.actionSize,
+    },
     // NativeTabs owns the tab-bar safe area on both platforms. Keep only a small
     // visual tail so the final row does not touch the navigation surface.
     scroll: { paddingBottom: 24 },

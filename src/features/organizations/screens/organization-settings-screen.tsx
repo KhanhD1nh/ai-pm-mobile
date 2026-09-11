@@ -1,6 +1,8 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
 import {
   BottomSheet,
@@ -71,7 +73,10 @@ export default function OrganizationScreen() {
     updateOrg.mutate(name, {
       onSuccess: async () => {
         await refreshOrganizations();
-        Alert.alert(language === "vi" ? "Đã lưu workspace" : "Workspace saved");
+        showAppSnackbar(
+          language === "vi" ? "Đã lưu workspace" : "Workspace saved",
+          { tone: "success" },
+        );
       },
       onError,
     });
@@ -216,7 +221,7 @@ export default function OrganizationScreen() {
           accessibilityRole="button"
           onPress={() =>
             memberSheet &&
-            Alert.alert(
+            showAppAlert(
               language === "vi"
                 ? "Xóa khỏi workspace?"
                 : "Remove from workspace?",

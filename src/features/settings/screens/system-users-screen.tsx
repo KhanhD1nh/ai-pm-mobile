@@ -1,6 +1,7 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
 import {
   BottomSheet,
@@ -124,7 +125,7 @@ export default function SystemUsersScreen() {
             {!item.isSystemOwner ? (
               <MotionPressable
                 onPress={() =>
-                  Alert.alert(
+                  showAppAlert(
                     language === "vi" ? "Xóa user?" : "Delete user?",
                     item.email,
                     [
@@ -234,9 +235,9 @@ const createStyles = (ui: AppTheme) =>
       marginTop: 4,
     },
     deleteButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
+      borderRadius: Platform.OS === "android" ? 16 : 14,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.dangerSoft,

@@ -1,6 +1,6 @@
 # UI/UX Research Sources
 
-Last reviewed: 2026-09-07.
+Last reviewed: 2026-09-11.
 
 Use these sources to verify platform-sensitive UI/UX behavior. Prefer official documentation over community posts.
 
@@ -50,11 +50,36 @@ Relevant implementation notes:
 
 - Accessibility guidance: https://developer.android.com/guide/topics/ui/accessibility/apps
 - Compose accessibility API defaults: https://developer.android.com/develop/ui/compose/accessibility/api-defaults
+- Material 3 design system: https://developer.android.com/develop/ui/compose/designsystems/material3
+- Navigation bar: https://developer.android.com/develop/ui/compose/components/navigation-bar
+- Short navigation bar item: https://developer.android.com/reference/kotlin/androidx/compose/material3/ShortNavigationBarItem
+- NavigationBarView label visibility: https://developer.android.com/reference/com/google/android/material/navigation/NavigationBarView
+- Material 3 navigation bar tokens: https://android.googlesource.com/platform/frameworks/support/+/15ccca2bd51eab204fbee3c140a3076621e8ea61/compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/tokens/NavigationBarTokens.kt
+- Snackbar: https://developer.android.com/develop/ui/compose/components/snackbar
+- Edge-to-edge views: https://developer.android.com/develop/ui/views/layout/edge-to-edge
+- Window insets: https://developer.android.com/develop/ui/compose/system/insets
 
 Relevant design baseline:
 
 - interactive targets should generally provide at least 48 x 48 dp of focus/touch area
 - labels/content descriptions matter for non-text interactive elements
+- Material 3 favors tonal/surface hierarchy over decorative shadow-heavy cards
+- use the platform navigation bar pattern for a small stable set of top-level destinations
+- on phone portrait, Material 3 ShortNavigationBar uses top-positioned icons with text labels; selected/unselected items keep the same geometry rather than moving vertically
+- current Material 3 short-navigation geometry uses a 64 dp bar, 24 dp icon, and a 56 x 32 dp pill-shaped selected indicator; keep these dimensions fixed for both states
+- avoid Android `LABEL_VISIBILITY_AUTO` for AI-PM's primary bar because 4+ destinations switch to selected-only label behavior, which can visibly reposition the selected item
+- brief operation feedback such as save success should prefer a snackbar instead of blocking the user with a dialog
+- reserve dialogs for decisions that require explicit confirmation, especially destructive or high-impact actions
+- Android 15+ enforces edge-to-edge for apps targeting API 35+, so system-bar insets must be handled deliberately
+- Android navigation/actions should use native press feedback such as ripple where the control shape allows it
+
+### AI-PM Android adaptation
+
+- Keep the product's list-first information architecture shared with iOS.
+- Keep Liquid Glass as the iOS-specific navigation/control treatment; do not imitate glass with white circular surfaces on Android.
+- Use Material-style icon buttons, ripple feedback, tonal grouped surfaces, and Android back-arrow semantics on Android.
+- Keep Android stack titles left-aligned beside Back; retain centered iOS stack titles where appropriate.
+- On Android, use four stable destinations (Home, Projects, Inbox, Settings) plus a centered Create FAB; show labels for the four destinations and keep selected/unselected item geometry identical so selecting a tab never shifts it vertically.
 
 ## Community agent skills reviewed
 

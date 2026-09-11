@@ -1,6 +1,6 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
@@ -259,9 +259,9 @@ const createStyles = (ui: AppTheme) =>
     },
     headerActions: { flexDirection: "row", gap: 8 },
     createButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 15,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
+      borderRadius: Platform.OS === "android" ? 16 : 15,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.accentStrong,

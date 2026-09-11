@@ -2,7 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
 import { IssueQuickActionsSheet, issuesApi } from "@/features/issues/public";
 import type { Issue } from "@/shared/contracts";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
 import { BottomSheet, SectionHeader } from "@/shared/components/ui/mobile";
@@ -352,9 +352,9 @@ const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
     appBar: { flexDirection: "row", alignItems: "center", gap: 10 },
     iconButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 15,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
+      borderRadius: Platform.OS === "android" ? 16 : 15,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.surface,

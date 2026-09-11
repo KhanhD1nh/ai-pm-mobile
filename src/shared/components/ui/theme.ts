@@ -8,7 +8,7 @@ const systemFont =
 const shared = {
   header: {
     actionSize: Platform.OS === "android" ? 48 : 44,
-    iconSize: 22,
+    iconSize: Platform.OS === "android" ? 24 : 22,
     horizontalInset: 16,
     verticalInset: 4,
   },

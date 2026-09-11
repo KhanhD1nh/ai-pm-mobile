@@ -1,7 +1,7 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   AppState,
   Keyboard,
   KeyboardAvoidingView,
@@ -105,7 +105,7 @@ function presentTelegramLoginFailure(
     },
   }[failure];
 
-  Alert.alert(copy.title, copy.message, [
+  showAppAlert(copy.title, copy.message, [
     { text: vi ? "Đóng" : "Close", style: "cancel" },
     { text: vi ? "Thử lại" : "Try again", onPress: retry },
   ]);

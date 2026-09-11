@@ -1,4 +1,6 @@
-import Ionicons from "@react-native-vector-icons/ionicons";
+import Ionicons, {
+  type IoniconsIconName,
+} from "@react-native-vector-icons/ionicons";
 import { Modal, Platform, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MotionPressable } from "./motion";
@@ -10,10 +12,11 @@ export type AppDialogAction = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  destructive?: boolean;
 };
 
 const toneIcon = {
-  info: "cloud-download-outline",
+  info: "information-circle-outline",
   success: "checkmark-outline",
   warning: "alert-outline",
   danger: "close-outline",
@@ -24,8 +27,10 @@ export function AppDialog({
   title,
   message,
   tone = "info",
+  icon,
   primaryAction,
   secondaryAction,
+  tertiaryAction,
   onRequestClose,
   ui,
 }: {
@@ -33,8 +38,10 @@ export function AppDialog({
   title: string;
   message?: string;
   tone?: AppDialogTone;
+  icon?: IoniconsIconName;
   primaryAction: AppDialogAction;
   secondaryAction?: AppDialogAction;
+  tertiaryAction?: AppDialogAction;
   onRequestClose: () => void;
   ui: AppTheme;
 }) {
@@ -57,7 +64,7 @@ export function AppDialog({
             <View style={styles.iconShell}>
               <Ionicons
                 accessible={false}
-                name={toneIcon[tone]}
+                name={icon ?? toneIcon[tone]}
                 size={34}
                 color={toneColors.foreground}
               />
@@ -73,8 +80,16 @@ export function AppDialog({
                 accessibilityRole="button"
                 accessibilityLabel={primaryAction.label}
                 disabled={primaryAction.disabled}
+                android_ripple={
+                  Platform.OS === "android"
+                    ? { color: "rgba(255,255,255,0.20)" }
+                    : undefined
+                }
                 onPress={primaryAction.onPress}
-                style={styles.primaryButton}
+                style={[
+                  styles.primaryButton,
+                  primaryAction.destructive && styles.primaryButtonDestructive,
+                ]}
               >
                 <Text style={styles.primaryButtonText}>
                   {primaryAction.label}
@@ -86,11 +101,53 @@ export function AppDialog({
                   accessibilityRole="button"
                   accessibilityLabel={secondaryAction.label}
                   disabled={secondaryAction.disabled}
+                  android_ripple={
+                    Platform.OS === "android"
+                      ? { color: ui.colors.accentSoft }
+                      : undefined
+                  }
                   onPress={secondaryAction.onPress}
-                  style={styles.secondaryButton}
+                  style={[
+                    styles.secondaryButton,
+                    secondaryAction.destructive && styles.secondaryButtonDanger,
+                  ]}
                 >
-                  <Text style={styles.secondaryButtonText}>
+                  <Text
+                    style={[
+                      styles.secondaryButtonText,
+                      secondaryAction.destructive &&
+                        styles.secondaryButtonTextDanger,
+                    ]}
+                  >
                     {secondaryAction.label}
+                  </Text>
+                </MotionPressable>
+              ) : null}
+
+              {tertiaryAction ? (
+                <MotionPressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tertiaryAction.label}
+                  disabled={tertiaryAction.disabled}
+                  android_ripple={
+                    Platform.OS === "android"
+                      ? { color: ui.colors.accentSoft }
+                      : undefined
+                  }
+                  onPress={tertiaryAction.onPress}
+                  style={[
+                    styles.secondaryButton,
+                    tertiaryAction.destructive && styles.secondaryButtonDanger,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.secondaryButtonText,
+                      tertiaryAction.destructive &&
+                        styles.secondaryButtonTextDanger,
+                    ]}
+                  >
+                    {tertiaryAction.label}
                   </Text>
                 </MotionPressable>
               ) : null}
@@ -183,7 +240,9 @@ const createStyles = (ui: AppTheme, iconBackground: string) =>
       paddingHorizontal: 18,
       borderRadius: ui.radius.round,
       backgroundColor: ui.colors.accentStrong,
+      overflow: "hidden",
     },
+    primaryButtonDestructive: { backgroundColor: ui.colors.danger },
     primaryButtonText: {
       color: ui.colors.inverseText,
       ...ui.typography.bodyStrong,
@@ -198,9 +257,12 @@ const createStyles = (ui: AppTheme, iconBackground: string) =>
       backgroundColor: ui.colors.surfaceSoft,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: ui.colors.border,
+      overflow: "hidden",
     },
+    secondaryButtonDanger: { backgroundColor: ui.colors.dangerSoft },
     secondaryButtonText: {
       color: ui.colors.textSecondary,
       ...ui.typography.bodyStrong,
     },
+    secondaryButtonTextDanger: { color: ui.colors.danger },
   });

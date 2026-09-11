@@ -1,6 +1,8 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/providers/auth-provider";
 import { Button, Field, Pill } from "@/shared/components/ui/primitives";
@@ -93,11 +95,11 @@ export default function MembersScreen() {
         onSuccess: (result) => {
           closeAdd();
           if (result.skippedCount > 0)
-            Alert.alert(
-              language === "vi" ? "Đã thêm thành viên" : "Members added",
+            showAppSnackbar(
               language === "vi"
-                ? `${result.added.length} người được thêm, ${result.skippedCount} người đã có trong dự án.`
-                : `${result.added.length} added, ${result.skippedCount} already belonged to the project.`,
+                ? `Đã thêm ${result.added.length} người · ${result.skippedCount} người đã có trong dự án`
+                : `${result.added.length} added · ${result.skippedCount} already in the project`,
+              { tone: "success", durationMs: 4200 },
             );
         },
         onError,
@@ -213,7 +215,7 @@ export default function MembersScreen() {
           <MotionPressable
             onPress={() =>
               roleSheet &&
-              Alert.alert(
+              showAppAlert(
                 language === "vi" ? "Xóa thành viên?" : "Remove member?",
                 roleSheet.name,
                 [

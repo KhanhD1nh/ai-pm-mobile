@@ -1,6 +1,7 @@
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import {
   BottomSheet,
@@ -75,11 +76,11 @@ export default function CyclesScreen() {
             setStart("");
             setEnd("");
             if (isOfflineMutationReceipt(result)) {
-              Alert.alert(
-                language === "vi" ? "Đã lưu ngoại tuyến" : "Saved offline",
+              showAppSnackbar(
                 language === "vi"
-                  ? "Chu kỳ sẽ được tạo khi có mạng trở lại."
-                  : "The cycle will be created when connectivity returns.",
+                  ? "Đã lưu ngoại tuyến · Chu kỳ sẽ được tạo khi có mạng trở lại"
+                  : "Saved offline · The cycle will be created when you're back online",
+                { tone: "warning", durationMs: 4200 },
               );
             }
           },
@@ -108,8 +109,9 @@ export default function CyclesScreen() {
         onSuccess: (result) => {
           setSelected(null);
           if (isOfflineMutationReceipt(result))
-            Alert.alert(
+            showAppSnackbar(
               language === "vi" ? "Đã lưu ngoại tuyến" : "Saved offline",
+              { tone: "warning" },
             );
         },
         onError: (error) =>

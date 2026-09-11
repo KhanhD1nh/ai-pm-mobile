@@ -87,11 +87,23 @@ export function Button({
   disabled?: boolean;
   kind?: "primary" | "secondary" | "danger";
 }) {
+  const { theme: ui } = useAppPreferences();
   const styles = useStyles();
   return (
     <MotionPressable
+      accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
+      android_ripple={
+        Platform.OS === "android"
+          ? {
+              color:
+                kind === "secondary"
+                  ? ui.colors.accentSoft
+                  : "rgba(255,255,255,0.20)",
+            }
+          : undefined
+      }
       style={[
         styles.button,
         kind === "secondary" && styles.secondary,
@@ -151,14 +163,12 @@ const createStyles = (ui: AppTheme) =>
     multiline: { minHeight: 112, paddingTop: 13, textAlignVertical: "top" },
     button: {
       minHeight: Platform.OS === "android" ? 52 : 48,
-      borderRadius: Platform.OS === "android" ? 18 : 13,
+      borderRadius: Platform.OS === "android" ? ui.radius.round : 13,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 18,
-      backgroundColor:
-        Platform.OS === "android"
-          ? ui.colors.primaryContainer
-          : ui.colors.accentStrong,
+      backgroundColor: ui.colors.accentStrong,
+      overflow: "hidden",
       ...(Platform.OS === "android" ? { elevation: 0 } : ui.shadow.card),
     },
     secondary: {
@@ -173,10 +183,7 @@ const createStyles = (ui: AppTheme) =>
     },
     danger: { backgroundColor: ui.colors.danger },
     buttonText: {
-      color:
-        Platform.OS === "android"
-          ? ui.colors.onPrimaryContainer
-          : ui.colors.inverseText,
+      color: ui.colors.inverseText,
       ...ui.typography.bodyStrong,
       fontWeight: "600",
     },

@@ -121,6 +121,22 @@ export function MotionPressable({
     );
   }
 
+  if (Platform.OS === "android" && props.android_ripple) {
+    return (
+      <Pressable
+        {...props}
+        disabled={disabled}
+        style={({ pressed }) => [
+          style,
+          pressed && { opacity: 0.94 },
+          disabled && { opacity: 0.45 },
+        ]}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+
   if (Platform.OS === "android") {
     return (
       <AnimatedPressable

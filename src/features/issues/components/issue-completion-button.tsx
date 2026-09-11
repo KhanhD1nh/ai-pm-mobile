@@ -1,7 +1,7 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, View } from "react-native";
 import { workflowsApi, workflowKeys } from "@/features/workflows/public";
 import { MotionPressable } from "@/shared/components/ui/motion";
 import type { AppTheme } from "@/shared/components/ui/theme";
@@ -86,8 +86,8 @@ export function IssueCompletionButton({ issue }: { issue: Issue }) {
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
     hit: {
-      width: 44,
-      height: 44,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,

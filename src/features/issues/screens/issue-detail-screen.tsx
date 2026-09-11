@@ -1,6 +1,7 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { DateTimePicker as NativeDateTimePicker } from "@expo/ui/community/datetime-picker";
 import Markdown from "@ronradtke/react-native-markdown-display";
@@ -552,7 +553,7 @@ export default function IssueDetailScreen() {
           label={language === "vi" ? "Lưu trữ issue" : "Archive issue"}
           danger
           onPress={() =>
-            Alert.alert(
+            showAppAlert(
               language === "vi" ? "Lưu trữ issue?" : "Archive issue?",
               data.identifier,
               [
@@ -1634,8 +1635,8 @@ const createStyles = (ui: AppTheme) =>
       backgroundColor: ui.colors.surface,
     },
     scheduleAdjustButton: {
-      width: 44,
-      height: 44,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
       alignItems: "center",
       justifyContent: "center",
       borderRadius: ui.radius.sm,

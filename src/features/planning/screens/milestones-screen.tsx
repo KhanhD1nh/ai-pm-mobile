@@ -1,6 +1,7 @@
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import {
   BottomSheet,
@@ -67,11 +68,11 @@ export default function MilestonesScreen() {
             setTitle("");
             setTargetDate("");
             if (isOfflineMutationReceipt(result)) {
-              Alert.alert(
-                language === "vi" ? "Đã lưu ngoại tuyến" : "Saved offline",
+              showAppSnackbar(
                 language === "vi"
-                  ? "Cột mốc sẽ được tạo khi có mạng trở lại."
-                  : "The milestone will be created when connectivity returns.",
+                  ? "Đã lưu ngoại tuyến · Cột mốc sẽ được tạo khi có mạng trở lại"
+                  : "Saved offline · The milestone will be created when you're back online",
+                { tone: "warning", durationMs: 4200 },
               );
             }
           },
@@ -100,8 +101,9 @@ export default function MilestonesScreen() {
         onSuccess: (result) => {
           setSelected(null);
           if (isOfflineMutationReceipt(result))
-            Alert.alert(
+            showAppSnackbar(
               language === "vi" ? "Đã lưu ngoại tuyến" : "Saved offline",
+              { tone: "warning" },
             );
         },
         onError: (error) =>

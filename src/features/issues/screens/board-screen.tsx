@@ -2,6 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   SectionList,
   StyleSheet,
   Text,
@@ -694,9 +695,9 @@ const createStyles = (ui: AppTheme) =>
     },
     statusCount: { color: ui.colors.textMuted, ...ui.typography.caption },
     addInline: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: Platform.OS === "android" ? 48 : 44,
+      height: Platform.OS === "android" ? 48 : 44,
+      borderRadius: Platform.OS === "android" ? 24 : 22,
       alignItems: "center",
       justifyContent: "center",
     },

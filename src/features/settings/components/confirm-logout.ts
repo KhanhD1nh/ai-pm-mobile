@@ -1,4 +1,4 @@
-import { Alert } from "react-native";
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import type { AppLanguage } from "@/shared/preferences/app-preferences-context";
 
 export function confirmLogout(
@@ -7,7 +7,7 @@ export function confirmLogout(
 ) {
   const vi = language === "vi";
 
-  Alert.alert(
+  showAppAlert(
     vi ? "Đăng xuất?" : "Sign out?",
     vi
       ? "Bạn có chắc muốn đăng xuất khỏi AI-PM trên thiết bị này không?"

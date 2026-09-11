@@ -1,3 +1,4 @@
+import { showAppAlert } from "@/shared/feedback/app-alert";
 import { useState } from "react";
 import { ActivityIndicator, Platform, Switch, Text, View } from "react-native";
 import { AppDialog } from "@/shared/components/ui/app-dialog";
@@ -225,7 +226,7 @@ export default function MobileSettingsScreen() {
                 onPress={
                   device.enabled
                     ? () =>
-                        Alert.alert(
+                        showAppAlert(
                           language === "vi"
                             ? "Tắt thông báo trên thiết bị này?"
                             : "Disable notifications on this device?",
@@ -361,7 +362,7 @@ export default function MobileSettingsScreen() {
             <Button
               title={language === "vi" ? "Xóa hàng đợi" : "Clear queue"}
               onPress={() =>
-                Alert.alert(
+                showAppAlert(
                   language === "vi"
                     ? "Xóa các thay đổi chưa đồng bộ?"
                     : "Clear unsynced changes?",
@@ -554,6 +555,11 @@ export default function MobileSettingsScreen() {
 
       <AppDialog
         visible={updateDialogKind !== null}
+        icon={
+          updateDialogKind === "available"
+            ? "cloud-download-outline"
+            : undefined
+        }
         tone={
           updateDialogKind === "up-to-date"
             ? "success"

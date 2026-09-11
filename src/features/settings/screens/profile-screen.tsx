@@ -1,5 +1,6 @@
+import { showAppSnackbar } from "@/shared/feedback/app-snackbar";
 import { useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Button, Field } from "@/shared/components/ui/primitives";
 import {
   ListGroup,
@@ -78,8 +79,9 @@ export default function ProfileScreen() {
             onSave={(name) =>
               save.mutate(name, {
                 onSuccess: () =>
-                  Alert.alert(
+                  showAppSnackbar(
                     language === "vi" ? "Đã lưu hồ sơ" : "Profile saved",
+                    { tone: "success" },
                   ),
                 onError,
               })
@@ -130,8 +132,9 @@ export default function ProfileScreen() {
             {
               onSuccess: () => {
                 reset();
-                Alert.alert(
+                showAppSnackbar(
                   language === "vi" ? "Đã đổi mật khẩu" : "Password changed",
+                  { tone: "success" },
                 );
               },
               onError,
