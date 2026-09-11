@@ -1,9 +1,16 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Redirect, Tabs, router } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { Platform, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { issuesApi, issueKeys } from "@/features/issues/public";
 import {
@@ -16,6 +23,60 @@ import { MotionPressable } from "@/shared/components/ui/motion";
 import { LoadingScreen } from "@/shared/components/ui/screen";
 import type { AppTheme } from "@/shared/components/ui/theme";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
+
+const ANDROID_TAB_BAR_PADDING = 6;
+const ANDROID_TAB_INDICATOR_INSET = 3;
+
+function AndroidTabIndicator({
+  ui,
+  index,
+  count,
+  barWidth,
+}: {
+  ui: AppTheme;
+  index: number;
+  count: number;
+  barWidth: number;
+}) {
+  const styles = useMemo(() => createStyles(ui), [ui]);
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(index);
+
+  useEffect(() => {
+    progress.value = reduceMotion
+      ? index
+      : withTiming(index, {
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+        });
+  }, [index, progress, reduceMotion]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const contentWidth = Math.max(barWidth - ANDROID_TAB_BAR_PADDING * 2, 0);
+    const slotWidth = count > 0 ? contentWidth / count : 0;
+    const indicatorWidth = Math.max(
+      slotWidth - ANDROID_TAB_INDICATOR_INSET * 2,
+      0,
+    );
+
+    return {
+      width: indicatorWidth,
+      opacity: barWidth > 0 ? 1 : 0,
+      transform: [
+        {
+          translateX: progress.value * slotWidth + ANDROID_TAB_INDICATOR_INSET,
+        },
+      ],
+    };
+  }, [barWidth, count]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.androidTabIndicator, animatedStyle]}
+    />
+  );
+}
 
 function AndroidTabItem({
   ui,
@@ -39,10 +100,10 @@ function AndroidTabItem({
   onLongPress?: () => void;
 }) {
   const styles = useMemo(() => createStyles(ui), [ui]);
-  const iconColor = create
-    ? ui.colors.inverseText
-    : focused
-      ? ui.colors.onPrimaryContainer
+  const iconColor = focused
+    ? ui.colors.onPrimaryContainer
+    : create
+      ? ui.colors.accentStrong
       : ui.colors.textSecondary;
 
   return (
@@ -57,16 +118,12 @@ function AndroidTabItem({
       }}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={[
-        styles.androidTabItem,
-        focused && !create && styles.androidTabItemActive,
-        create && styles.androidCreateItem,
-      ]}
+      style={styles.androidTabItem}
     >
       <Ionicons
         accessible={false}
         name={focused ? iconActive : icon}
-        size={create ? 24 : 22}
+        size={22}
         color={iconColor}
       ></Ionicons>
       <Text
@@ -100,6 +157,7 @@ function AndroidTabs({
 }) {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(ui), [ui]);
+  const [tabBarWidth, setTabBarWidth] = useState(0);
 
   return (
     <Tabs
@@ -111,7 +169,21 @@ function AndroidTabs({
             { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
         >
-          <View style={styles.androidTabBar}>
+          <View
+            onLayout={(event) => {
+              const width = event.nativeEvent.layout.width;
+              setTabBarWidth((current) =>
+                Math.abs(current - width) > 0.5 ? width : current,
+              );
+            }}
+            style={styles.androidTabBar}
+          >
+            <AndroidTabIndicator
+              ui={ui}
+              index={state.index}
+              count={state.routes.length}
+              barWidth={tabBarWidth}
+            />
             {state.routes.map((route, index) => {
               const focused = state.index === index;
               const options = descriptors[route.key].options;
@@ -390,40 +462,47 @@ export default function TabsLayout() {
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
     androidTabBarArea: {
-      paddingTop: 6,
-      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingHorizontal: 14,
       backgroundColor: ui.colors.bg,
     },
     androidTabBar: {
-      height: 64,
-      padding: 4,
+      position: "relative",
+      height: 68,
+      padding: ANDROID_TAB_BAR_PADDING,
       flexDirection: "row",
       alignItems: "center",
-      gap: 2,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: ui.colors.border,
-      borderRadius: 24,
+      borderRadius: 34,
       backgroundColor: ui.colors.surface,
       overflow: "hidden",
       shadowColor: ui.colors.shadow,
-      shadowOpacity: 0.1,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 5,
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 4,
+    },
+    androidTabIndicator: {
+      position: "absolute",
+      zIndex: 0,
+      left: ANDROID_TAB_BAR_PADDING,
+      top: ANDROID_TAB_BAR_PADDING,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: ui.colors.primaryContainer,
     },
     androidTabItem: {
+      zIndex: 1,
       flex: 1,
       minWidth: 0,
       height: 56,
-      paddingHorizontal: 2,
-      borderRadius: 20,
+      paddingHorizontal: 1,
+      borderRadius: 28,
       alignItems: "center",
       justifyContent: "center",
-      gap: 2,
+      gap: 3,
       overflow: "hidden",
-    },
-    androidTabItemActive: {
-      backgroundColor: ui.colors.primaryContainer,
     },
     androidTabLabel: {
       maxWidth: "100%",
@@ -435,18 +514,12 @@ const createStyles = (ui: AppTheme) =>
     },
     androidTabLabelActive: {
       color: ui.colors.onPrimaryContainer,
-      fontWeight: "700",
-    },
-    androidCreateItem: {
-      height: 52,
-      marginVertical: 2,
-      borderRadius: 18,
-      backgroundColor: ui.colors.accentStrong,
+      fontWeight: "600",
     },
     androidCreateLabel: {
-      color: ui.colors.inverseText,
+      color: ui.colors.accentStrong,
       fontSize: 11,
       lineHeight: 14,
-      fontWeight: "700",
+      fontWeight: "600",
     },
   });
