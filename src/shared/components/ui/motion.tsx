@@ -1,6 +1,5 @@
-import { useState, type PropsWithChildren } from "react";
+import { type PropsWithChildren } from "react";
 import {
-  Animated as NativeAnimated,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,8 +15,6 @@ import Animated, {
   FadeOut,
   useReducedMotion,
 } from "react-native-reanimated";
-
-const AnimatedPressable = NativeAnimated.createAnimatedComponent(Pressable);
 
 export function FadeInView({
   children,
@@ -102,7 +99,6 @@ export function MotionPressable({
   disabled,
   ...props
 }: PropsWithChildren<PressableProps & { style?: StyleProp<ViewStyle> }>) {
-  const [scale] = useState(() => new NativeAnimated.Value(1));
   const reduceMotion = useReducedMotion();
 
   if (reduceMotion) {
@@ -121,55 +117,26 @@ export function MotionPressable({
     );
   }
 
-  if (Platform.OS === "android" && props.android_ripple) {
+  if (Platform.OS === "android") {
     return (
       <Pressable
         {...props}
         disabled={disabled}
+        android_ripple={
+          props.android_ripple ?? {
+            color: "rgba(127,127,127,0.16)",
+            borderless: false,
+            foreground: true,
+          }
+        }
         style={({ pressed }) => [
           style,
-          pressed && { opacity: 0.94 },
+          pressed && { opacity: 0.97 },
           disabled && { opacity: 0.45 },
         ]}
       >
         {children}
       </Pressable>
-    );
-  }
-
-  if (Platform.OS === "android") {
-    return (
-      <AnimatedPressable
-        {...props}
-        disabled={disabled}
-        onPressIn={(event) => {
-          NativeAnimated.spring(scale, {
-            toValue: 0.965,
-            stiffness: 520,
-            damping: 28,
-            mass: 0.55,
-            useNativeDriver: true,
-          }).start();
-          props.onPressIn?.(event);
-        }}
-        onPressOut={(event) => {
-          NativeAnimated.spring(scale, {
-            toValue: 1,
-            stiffness: 420,
-            damping: 22,
-            mass: 0.65,
-            useNativeDriver: true,
-          }).start();
-          props.onPressOut?.(event);
-        }}
-        style={[
-          style,
-          { transform: [{ scale }] },
-          disabled && { opacity: 0.45 },
-        ]}
-      >
-        {children}
-      </AnimatedPressable>
     );
   }
 
@@ -179,7 +146,7 @@ export function MotionPressable({
       disabled={disabled}
       style={({ pressed }) => [
         style,
-        pressed && { transform: [{ scale: 0.985 }], opacity: 0.88 },
+        pressed && { transform: [{ scale: 0.992 }], opacity: 0.9 },
         disabled && { opacity: 0.45 },
       ]}
     >

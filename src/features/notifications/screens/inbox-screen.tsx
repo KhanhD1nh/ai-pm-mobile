@@ -12,6 +12,7 @@ import {
   BottomSheet,
   ChoiceRow,
   GlassIconButton,
+  SwipeActionRow,
 } from "@/shared/components/ui/mobile";
 import { EmptyState, ErrorState, Screen } from "@/shared/components/ui/screen";
 import { MotionPressable } from "@/shared/components/ui/motion";
@@ -218,79 +219,115 @@ export default function InboxScreen() {
         ItemSeparatorComponent={() => (
           <View style={styles.notificationBorder} />
         )}
-        renderItem={({ item: notification }) => (
-          <MotionPressable
-            accessibilityRole="button"
-            accessibilityLabel={notification.title || notification.type}
-            onPress={() => void open(notification)}
-            onLongPress={() => {
-              if (!notification.read && !markRead.isPending)
-                markRead.mutate(notification.id);
-            }}
-            delayLongPress={280}
-            style={styles.notification}
-          >
-            <View
-              style={[
-                styles.unreadRail,
-                notification.read && styles.unreadRailRead,
-              ]}
-            />
-            <View
-              style={[styles.icon, !notification.read && styles.iconUnread]}
+        renderItem={({ item: notification }) => {
+          const markReadLabel =
+            language === "vi" ? "Đánh dấu đã đọc" : "Mark as read";
+
+          return (
+            <SwipeActionRow
+              label={markReadLabel}
+              icon="checkmark-done-outline"
+              actionColor={ui.colors.accentStrong}
+              disabled={notification.read || markRead.isPending}
+              onAction={() => markRead.mutate(notification.id)}
             >
-              <Ionicons
-                accessible={false}
-                name={
-                  notification.read ? "notifications-outline" : "notifications"
-                }
-                size={18}
-                color={
+              <MotionPressable
+                accessibilityRole="button"
+                accessibilityLabel={notification.title || notification.type}
+                accessibilityHint={
                   notification.read
-                    ? ui.colors.textMuted
-                    : ui.colors.accentStrong
+                    ? undefined
+                    : language === "vi"
+                      ? "Vuốt sang trái hoặc nhấn giữ để đánh dấu đã đọc"
+                      : "Swipe left or long press to mark as read"
                 }
-              />
-            </View>
-            <View style={styles.copy}>
-              <View style={styles.topRow}>
-                <Text
+                accessibilityActions={
+                  notification.read
+                    ? undefined
+                    : [{ name: "markRead", label: markReadLabel }]
+                }
+                onAccessibilityAction={(event) => {
+                  if (
+                    event.nativeEvent.actionName === "markRead" &&
+                    !markRead.isPending
+                  ) {
+                    markRead.mutate(notification.id);
+                  }
+                }}
+                onPress={() => void open(notification)}
+                onLongPress={() => {
+                  if (!notification.read && !markRead.isPending)
+                    markRead.mutate(notification.id);
+                }}
+                delayLongPress={320}
+                style={styles.notification}
+              >
+                <View
                   style={[
-                    styles.title,
-                    !notification.read && styles.titleUnread,
+                    styles.unreadRail,
+                    notification.read && styles.unreadRailRead,
                   ]}
-                  numberOfLines={2}
+                />
+                <View
+                  style={[styles.icon, !notification.read && styles.iconUnread]}
                 >
-                  {notification.title || notification.type}
-                </Text>
-                {notification.priority && notification.priority !== "NORMAL" ? (
-                  <Text
-                    style={[
-                      styles.priority,
-                      { color: priorityColor(ui, notification.priority) },
-                    ]}
-                  >
-                    {notification.priority}
+                  <Ionicons
+                    accessible={false}
+                    name={
+                      notification.read
+                        ? "notifications-outline"
+                        : "notifications"
+                    }
+                    size={18}
+                    color={
+                      notification.read
+                        ? ui.colors.textMuted
+                        : ui.colors.accentStrong
+                    }
+                  />
+                </View>
+                <View style={styles.copy}>
+                  <View style={styles.topRow}>
+                    <Text
+                      style={[
+                        styles.title,
+                        !notification.read && styles.titleUnread,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {notification.title || notification.type}
+                    </Text>
+                    {notification.priority &&
+                    notification.priority !== "NORMAL" ? (
+                      <Text
+                        style={[
+                          styles.priority,
+                          { color: priorityColor(ui, notification.priority) },
+                        ]}
+                      >
+                        {notification.priority}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {notification.body ? (
+                    <Text style={styles.body} numberOfLines={2}>
+                      {notification.body}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.time}>
+                    {new Date(notification.created_at).toLocaleString(locale)}
                   </Text>
-                ) : null}
-              </View>
-              {notification.body ? (
-                <Text style={styles.body} numberOfLines={2}>
-                  {notification.body}
-                </Text>
-              ) : null}
-              <Text style={styles.time}>
-                {new Date(notification.created_at).toLocaleString(locale)}
-              </Text>
-            </View>
-            <Ionicons
-              accessible={false}
-              name="chevron-forward"
-              size={16}
-              color={ui.colors.textMuted}
-            />
-          </MotionPressable>
-        )}
+                </View>
+                <Ionicons
+                  accessible={false}
+                  name="chevron-forward"
+                  size={16}
+                  color={ui.colors.textMuted}
+                />
+              </MotionPressable>
+            </SwipeActionRow>
+          );
+        }}
       />
 
       <BottomSheet
@@ -392,6 +429,7 @@ const createStyles = (ui: AppTheme) =>
       alignItems: "center",
       gap: 11,
       paddingVertical: 13,
+      backgroundColor: ui.colors.bg,
     },
     notificationBorder: {
       height: StyleSheet.hairlineWidth,

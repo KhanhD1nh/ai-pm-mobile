@@ -72,6 +72,136 @@ export function SectionHeader({
   );
 }
 
+export function SwipeActionRow({
+  children,
+  label,
+  icon,
+  onAction,
+  actionColor,
+  actionForeground = "#FFFFFF",
+  disabled = false,
+  actionWidth = Platform.OS === "android" ? 104 : 96,
+}: PropsWithChildren<{
+  label: string;
+  icon: IoniconsIconName;
+  onAction: () => void;
+  actionColor: string;
+  actionForeground?: string;
+  disabled?: boolean;
+  actionWidth?: number;
+}>) {
+  const reduceMotion = useReducedMotion();
+  const translateX = useMemo(() => new RNAnimated.Value(0), []);
+  const [open, setOpen] = useState(false);
+
+  const settle = useCallback(
+    (nextOpen: boolean) => {
+      const destination = nextOpen ? -actionWidth : 0;
+      translateX.stopAnimation();
+      if (reduceMotion) {
+        translateX.setValue(destination);
+        setOpen(nextOpen);
+        return;
+      }
+      RNAnimated.spring(translateX, {
+        toValue: destination,
+        stiffness: 430,
+        damping: 38,
+        mass: 0.72,
+        overshootClamping: true,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setOpen(nextOpen);
+      });
+    },
+    [actionWidth, reduceMotion, translateX],
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gesture) => {
+          if (disabled) return false;
+          const horizontal = Math.abs(gesture.dx);
+          const vertical = Math.abs(gesture.dy);
+          return horizontal > 10 && horizontal > vertical * 1.25;
+        },
+        onPanResponderGrant: () => translateX.stopAnimation(),
+        onPanResponderMove: (_, gesture) => {
+          const base = open ? -actionWidth : 0;
+          const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
+          translateX.setValue(next);
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const base = open ? -actionWidth : 0;
+          const projected = base + gesture.dx + gesture.vx * 26;
+          settle(projected < -actionWidth * 0.42);
+        },
+        onPanResponderTerminate: () => settle(open),
+        onShouldBlockNativeResponder: () => false,
+      }),
+    [actionWidth, disabled, open, settle, translateX],
+  );
+
+  const runAction = useCallback(() => {
+    if (disabled) return;
+    settle(false);
+    onAction();
+  }, [disabled, onAction, settle]);
+
+  return (
+    <View style={stylesStatic.swipeActionClip}>
+      <View
+        pointerEvents={open ? "auto" : "none"}
+        style={[
+          stylesStatic.swipeActionRail,
+          { width: actionWidth, backgroundColor: actionColor },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          disabled={disabled}
+          onPress={runAction}
+          style={({ pressed }) => [
+            stylesStatic.swipeActionButton,
+            pressed && stylesStatic.swipeActionPressed,
+          ]}
+        >
+          <Ionicons
+            accessible={false}
+            name={icon}
+            size={Platform.OS === "android" ? 23 : 21}
+            color={actionForeground}
+          />
+          <Text
+            numberOfLines={2}
+            style={[stylesStatic.swipeActionLabel, { color: actionForeground }]}
+          >
+            {label}
+          </Text>
+        </Pressable>
+      </View>
+      <RNAnimated.View
+        {...panResponder.panHandlers}
+        style={{ transform: [{ translateX }] }}
+      >
+        {children}
+        {open ? (
+          <Pressable
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            onPress={() => settle(false)}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+      </RNAnimated.View>
+    </View>
+  );
+}
+
 export function GlassIconButton({
   icon,
   label,
@@ -853,6 +983,37 @@ export function ChoiceRow({
     </MotionPressable>
   );
 }
+
+const stylesStatic = StyleSheet.create({
+  swipeActionClip: {
+    overflow: "hidden",
+  },
+  swipeActionRail: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "stretch",
+    justifyContent: "center",
+  },
+  swipeActionButton: {
+    flex: 1,
+    minWidth: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+  },
+  swipeActionPressed: {
+    opacity: 0.78,
+  },
+  swipeActionLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+});
 
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({

@@ -72,6 +72,11 @@ Relevant design baseline:
 - reserve dialogs for decisions that require explicit confirmation, especially destructive or high-impact actions
 - Android 15+ enforces edge-to-edge for apps targeting API 35+, so system-bar insets must be handled deliberately
 - Android navigation/actions should use native press feedback such as ripple where the control shape allows it
+- Android interactive targets should remain at least 48 x 48 dp; iOS controls should normally provide a comfortable 44 x 44 pt hit region even when the visible glyph is smaller.
+- Edge-to-edge backgrounds may extend under system bars, but tappable controls and critical text must remain inset from status/navigation bars and gesture regions.
+- Familiar platform gestures should be preferred over novel custom gestures; gesture-only actions need an alternate discoverable/accessibility path.
+- Swipe-to-reveal actions are appropriate for repeated list rows when the action is contextual and reversible or low-risk. The vertical scroll gesture must win unless horizontal intent is clear.
+- Press feedback should not visibly resize Android list rows or navigation items. Prefer ripple/state-layer feedback on Android; keep iOS press transforms subtle enough that rows do not appear to jump.
 
 ### AI-PM Android adaptation
 
@@ -80,6 +85,16 @@ Relevant design baseline:
 - Use Material-style icon buttons, ripple feedback, tonal grouped surfaces, and Android back-arrow semantics on Android.
 - Keep Android stack titles left-aligned beside Back; retain centered iOS stack titles where appropriate.
 - On Android, use four stable destinations (Home, Projects, Inbox, Settings) plus a centered Create FAB; show labels for the four destinations and keep selected/unselected item geometry identical so selecting a tab never shifts it vertically.
+- Use swipe actions only where the same action is also available through long-press, overflow, or accessibility actions. Never hide a required workflow behind swipe alone.
+- Keep destructive swipe actions visually distinct from non-destructive actions and do not trigger a destructive action merely because the row crossed a swipe threshold; reveal the action first unless the product explicitly adopts a confirmed full-swipe pattern.
+
+## 2026 implementation decisions from this audit
+
+- `MotionPressable` uses Material-style ripple feedback on Android by default rather than shrinking controls on touch. This prevents the selected/pressed geometry from appearing to jump.
+- iOS press feedback remains intentionally subtle and honors Reduce Motion.
+- `SwipeActionRow` is the shared swipe-to-reveal primitive. It locks onto horizontal intent only after a directional threshold, clamps travel to the action width, springs open/closed, and honors Reduce Motion.
+- Notification rows are the first production use: unread notifications can be swiped left to reveal Mark as read. Long-press and accessibility custom actions remain available so swipe is not the sole interaction path.
+- The swipe implementation deliberately uses the existing React Native responder/animation stack, so this UX pass does not introduce a new native dependency or require a dev-client rebuild.
 
 ## Community agent skills reviewed
 
