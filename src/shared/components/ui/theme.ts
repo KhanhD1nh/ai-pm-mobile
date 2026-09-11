@@ -146,7 +146,10 @@ export const lightTheme = {
     statusInReview: "#6554C0",
     statusDone: "#36B37E",
     statusCanceled: "#8993A5",
-    overlay: "rgba(9, 30, 66, 0.54)",
+    overlay:
+      Platform.OS === "android"
+        ? "rgba(0, 0, 0, 0.46)"
+        : "rgba(9, 30, 66, 0.54)",
     shadow: "#091E42",
   },
   shadow: {
@@ -205,7 +208,10 @@ export const darkTheme = {
     statusInReview: "#9F8FEF",
     statusDone: "#57D9A3",
     statusCanceled: "#738496",
-    overlay: "rgba(9, 30, 66, 0.70)",
+    overlay:
+      Platform.OS === "android"
+        ? "rgba(0, 0, 0, 0.64)"
+        : "rgba(9, 30, 66, 0.70)",
     shadow: "#000000",
   },
   shadow: {
