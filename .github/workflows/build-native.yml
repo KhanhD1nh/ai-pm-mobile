@@ -62,19 +62,6 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24.3"
-
-      - name: Setup Theos
-        uses: actions/checkout@v4
-        with:
-          repository: theos/theos
-          ref: 5280bd038207e14f8bd76f5417aa2fe641c03228
-          path: theos
-          submodules: recursive
-
       - name: Validate build environment
         shell: bash
         run: |
@@ -112,69 +99,11 @@ jobs:
       - name: Build unsigned IPA
         run: bash scripts/build-unsigned-ios.sh
 
-      - name: Install pinned ipapatch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --depth 1 --branch v2.1.3 \
-            https://github.com/asdfzxcvbn/ipapatch.git "$RUNNER_TEMP/ipapatch"
-          mkdir -p "$RUNNER_TEMP/bin"
-          (
-            cd "$RUNNER_TEMP/ipapatch"
-            go build -o "$RUNNER_TEMP/bin/ipapatch" .
-          )
-          chmod 0755 "$RUNNER_TEMP/bin/ipapatch"
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/bin/ipapatch" --version
-
-      - name: Build Spotify-style sideload compatibility shim
-        shell: bash
-        env:
-          THEOS: ${{ github.workspace }}/theos
-        run: |
-          set -euo pipefail
-          brew install make dpkg ldid
-          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
-
-          SHIM_REPO="$RUNNER_TEMP/eevee-sideload-shim"
-          git clone --filter=blob:none --no-checkout \
-            https://github.com/SideloadLabs/EeveeSpotifyReincarnated.git "$SHIM_REPO"
-          git -C "$SHIM_REPO" sparse-checkout init --cone
-          git -C "$SHIM_REPO" sparse-checkout set modules/zxPluginsInject modules/fishhook
-          git -C "$SHIM_REPO" checkout 89e07d97a0afb3b3b6a245a440feaf7c3efd16e8
-
-          make -C "$SHIM_REPO/modules/zxPluginsInject" FINALPACKAGE=1
-          SHIM_PATH="$SHIM_REPO/modules/zxPluginsInject/.theos/obj/zxPluginsInject.dylib"
-          if [ ! -f "$SHIM_PATH" ]; then
-            SHIM_PATH="$SHIM_REPO/modules/zxPluginsInject/.theos/obj/debug/zxPluginsInject.dylib"
-          fi
-          test -f "$SHIM_PATH"
-          cp "$SHIM_PATH" "$RUNNER_TEMP/zxPluginsInject.dylib"
-          /usr/bin/install_name_tool -id '@rpath/zxPluginsInject.dylib' "$RUNNER_TEMP/zxPluginsInject.dylib"
-          /usr/bin/otool -L "$RUNNER_TEMP/zxPluginsInject.dylib"
-
-      - name: Patch sideload widget compatibility
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash scripts/patch-ios-sideload.sh \
-            AI-PM-unsigned.ipa \
-            AI-PM-sideload-patched.ipa \
-            "$RUNNER_TEMP/zxPluginsInject.dylib"
-
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
           name: AI-PM-ios-unsigned-${{ github.run_number }}
           path: AI-PM-unsigned.ipa
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload patched sideload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: AI-PM-ios-sideload-patched-${{ github.run_number }}
-          path: AI-PM-sideload-patched.ipa
           if-no-files-found: error
           retention-days: 14
 
@@ -261,7 +190,6 @@ jobs:
         run: |
           set -euo pipefail
           gh release create "$GITHUB_REF_NAME" \
-            release-assets/AI-PM-sideload-patched.ipa \
             release-assets/AI-PM-unsigned.ipa \
             release-assets/AI-PM-android-release.apk \
             --repo "$GITHUB_REPOSITORY" \
