@@ -315,6 +315,8 @@ export default function LoginScreen() {
                 <View style={styles.form}>
                   {initialSetup ? (
                     <Field
+                      autoComplete="name"
+                      importantForAutofill="yes"
                       placeholder={t("login.name")}
                       value={name}
                       onChangeText={setName}
@@ -322,7 +324,8 @@ export default function LoginScreen() {
                   ) : null}
                   <Field
                     autoCapitalize="none"
-                    autoComplete="email"
+                    autoComplete={initialSetup ? "email" : "username"}
+                    importantForAutofill="yes"
                     keyboardType="email-address"
                     placeholder={t("login.email")}
                     value={email}
@@ -330,7 +333,10 @@ export default function LoginScreen() {
                   />
                   <Field
                     secureTextEntry
-                    autoComplete="password"
+                    autoComplete={
+                      initialSetup ? "new-password" : "current-password"
+                    }
+                    importantForAutofill="yes"
                     placeholder={t("login.password")}
                     value={password}
                     onChangeText={setPassword}
