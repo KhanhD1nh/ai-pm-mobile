@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Platform, Switch, Text, View } from "react-native";
 import { AppDialog } from "@/shared/components/ui/app-dialog";
 import { Button } from "@/shared/components/ui/primitives";
 import {
@@ -88,22 +81,6 @@ export default function MobileSettingsScreen() {
           ? "Push notifications chưa được hỗ trợ trên web."
           : "Push notifications are not supported on web."
         : null;
-
-  const handleEnablePush = async () => {
-    try {
-      await enablePush();
-      Alert.alert(
-        language === "vi"
-          ? "Đã bật thông báo đẩy"
-          : "Push notifications enabled",
-      );
-    } catch (error) {
-      presentError(
-        language === "vi" ? "Không thể bật push" : "Could not enable push",
-        error,
-      );
-    }
-  };
 
   const handlePushToggle = async (next: boolean) => {
     try {
@@ -192,34 +169,39 @@ export default function MobileSettingsScreen() {
         <ListRow
           first
           icon="notifications-outline"
-          label={
-            language === "vi" ? "Push notifications" : "Push notifications"
-          }
+          label={language === "vi" ? "Thông báo đẩy" : "Push notifications"}
           detail={
             pushUnavailableDetail ??
             (language === "vi"
-              ? "Nhận thông báo khi app đang nền hoặc đã đóng. IPA sideload cần provisioning profile có Push Notifications."
-              : "Receive alerts while the app is backgrounded or closed.")
+              ? Platform.OS === "ios"
+                ? "Nhận thông báo kể cả khi ứng dụng chạy nền hoặc đã đóng."
+                : "Nhận thông báo khi ứng dụng chạy nền hoặc đã đóng."
+              : Platform.OS === "ios"
+                ? "Receive notifications even when the app is backgrounded or closed."
+                : "Receive notifications while the app is backgrounded or closed.")
           }
           trailing={
-            Platform.OS === "ios" ? (
-              <Switch
-                accessibilityLabel={
-                  language === "vi"
-                    ? "Bật hoặc tắt thông báo đẩy"
-                    : "Enable or disable push notifications"
-                }
-                value={pushEnabled}
-                disabled={busy || devices.isLoading || !pushSupport.supported}
-                onValueChange={(value) => void handlePushToggle(value)}
-              />
-            ) : (
-              <Button
-                title={busy ? "…" : language === "vi" ? "Bật" : "Enable"}
-                disabled={busy || !pushSupport.supported}
-                onPress={() => void handleEnablePush()}
-              />
-            )
+            <Switch
+              accessibilityLabel={
+                language === "vi"
+                  ? "Bật hoặc tắt thông báo đẩy"
+                  : "Enable or disable push notifications"
+              }
+              value={pushEnabled}
+              disabled={busy || devices.isLoading || !pushSupport.supported}
+              onValueChange={(value) => void handlePushToggle(value)}
+              trackColor={
+                Platform.OS === "android"
+                  ? {
+                      false: ui.colors.borderStrong,
+                      true: ui.colors.accent,
+                    }
+                  : undefined
+              }
+              thumbColor={
+                Platform.OS === "android" ? ui.colors.surface : undefined
+              }
+            />
           }
         />
       </ListGroup>
