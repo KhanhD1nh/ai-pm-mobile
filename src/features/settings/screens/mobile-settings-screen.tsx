@@ -63,8 +63,8 @@ export default function MobileSettingsScreen() {
   const otaUnavailableDetail =
     updateInfo.supportReason === "development-build"
       ? language === "vi"
-        ? "Bản đang cài là development/Debug nên Expo Updates API bị tắt. Cài IPA Release OTA một lần để nhận các bản cập nhật sau."
-        : "The installed app is a development/Debug build, so the Expo Updates API is disabled. Install the OTA-capable Release IPA once to receive later updates."
+        ? "Bản đang cài là development/Debug nên Expo Updates API bị tắt. Cài bản Release hỗ trợ OTA một lần để nhận các bản cập nhật sau."
+        : "The installed app is a development/Debug build, so the Expo Updates API is disabled. Install an OTA-capable Release build once to receive later updates."
       : updateInfo.supportReason === "updates-disabled"
         ? language === "vi"
           ? "expo-updates chưa được bật đúng trong binary đang cài."
@@ -414,8 +414,8 @@ export default function MobileSettingsScreen() {
             updateInfo.updateId
               ? `${updateInfo.updateId.slice(0, 12)}${updateInfo.createdAt ? ` · ${new Date(updateInfo.createdAt).toLocaleString(locale)}` : ""}`
               : language === "vi"
-                ? "Bản nhúng trong IPA"
-                : "Embedded in IPA"
+                ? "Bản tích hợp sẵn trong ứng dụng"
+                : "Bundled app version"
           }
         />
         {updateInfo.releaseNotes ? (
@@ -431,8 +431,8 @@ export default function MobileSettingsScreen() {
           detail={
             updateInfo.supported
               ? language === "vi"
-                ? "Tìm OTA mới mà không cần cài lại IPA."
-                : "Find a new OTA without reinstalling the IPA."
+                ? "Tìm bản OTA mới mà không cần cài lại ứng dụng."
+                : "Check for a new OTA without reinstalling the app."
               : otaUnavailableDetail
           }
           trailing={

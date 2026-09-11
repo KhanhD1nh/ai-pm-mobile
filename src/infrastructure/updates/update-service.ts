@@ -72,7 +72,7 @@ export async function checkForOtaUpdate(): Promise<OtaUpdateCheck> {
       throw new Error(
         message && message !== "undefined reason"
           ? `Expo Updates không thể kiểm tra OTA: ${message}`
-          : "Expo Updates không thể kiểm tra OTA từ binary hiện tại. Hãy cài lại IPA Release được build với đúng channel/runtime rồi thử lại.",
+          : "Expo Updates không thể kiểm tra OTA từ bản cài hiện tại. Hãy cài lại bản Release được build với đúng channel/runtime rồi thử lại.",
       );
     }
 
