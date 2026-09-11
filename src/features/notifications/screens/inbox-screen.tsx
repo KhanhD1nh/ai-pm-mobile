@@ -238,8 +238,8 @@ export default function InboxScreen() {
                   notification.read
                     ? undefined
                     : language === "vi"
-                      ? "Vuốt sang trái hoặc nhấn giữ để đánh dấu đã đọc"
-                      : "Swipe left or long press to mark as read"
+                      ? "Vuốt sang trái để đánh dấu đã đọc"
+                      : "Swipe left to mark as read"
                 }
                 accessibilityActions={
                   notification.read
@@ -255,11 +255,6 @@ export default function InboxScreen() {
                   }
                 }}
                 onPress={() => void open(notification)}
-                onLongPress={() => {
-                  if (!notification.read && !markRead.isPending)
-                    markRead.mutate(notification.id);
-                }}
-                delayLongPress={320}
                 style={styles.notification}
               >
                 <View

@@ -38,6 +38,10 @@ import Reanimated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  getSwipeActionDragLimit,
+  resolveSwipeActionRelease,
+} from "@/shared/gestures/swipe-action";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 import type { AppTheme } from "./theme";
 import { MotionPressable } from "./motion";
@@ -93,14 +97,18 @@ export function SwipeActionRow({
   const reduceMotion = useReducedMotion();
   const translateX = useMemo(() => new RNAnimated.Value(0), []);
   const [open, setOpen] = useState(false);
+  const [rowWidth, setRowWidth] = useState(0);
 
   const settle = useCallback(
     (nextOpen: boolean) => {
       const destination = nextOpen ? -actionWidth : 0;
       translateX.stopAnimation();
+      // Keep interaction/accessibility state in sync with the target immediately.
+      // Waiting for the spring callback can leave a hidden action focusable when a
+      // second gesture interrupts the animation.
+      setOpen(nextOpen);
       if (reduceMotion) {
         translateX.setValue(destination);
-        setOpen(nextOpen);
         return;
       }
       RNAnimated.spring(translateX, {
@@ -110,12 +118,16 @@ export function SwipeActionRow({
         mass: 0.72,
         overshootClamping: true,
         useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) setOpen(nextOpen);
-      });
+      }).start();
     },
     [actionWidth, reduceMotion, translateX],
   );
+
+  const runAction = useCallback(() => {
+    if (disabled) return;
+    settle(false);
+    onAction();
+  }, [disabled, onAction, settle]);
 
   const panResponder = useMemo(
     () =>
@@ -125,39 +137,52 @@ export function SwipeActionRow({
           if (disabled) return false;
           const horizontal = Math.abs(gesture.dx);
           const vertical = Math.abs(gesture.dy);
-          return horizontal > 10 && horizontal > vertical * 1.25;
+          if (horizontal <= 10 || horizontal <= vertical * 1.25) return false;
+          return open || gesture.dx < -10;
         },
         onPanResponderGrant: () => translateX.stopAnimation(),
         onPanResponderMove: (_, gesture) => {
           const base = open ? -actionWidth : 0;
-          const next = Math.max(-actionWidth, Math.min(0, base + gesture.dx));
+          const dragLimit = getSwipeActionDragLimit(rowWidth, actionWidth);
+          const next = Math.max(-dragLimit, Math.min(0, base + gesture.dx));
           translateX.setValue(next);
         },
         onPanResponderRelease: (_, gesture) => {
           const base = open ? -actionWidth : 0;
           const projected = base + gesture.dx + gesture.vx * 26;
-          settle(projected < -actionWidth * 0.42);
+          const decision = resolveSwipeActionRelease({
+            projectedX: projected,
+            actionWidth,
+            rowWidth,
+          });
+
+          if (decision === "action") {
+            runAction();
+            return;
+          }
+          settle(decision === "open");
         },
         onPanResponderTerminate: () => settle(open),
+        onPanResponderTerminationRequest: () => false,
         onShouldBlockNativeResponder: () => false,
       }),
-    [actionWidth, disabled, open, settle, translateX],
+    [actionWidth, disabled, open, rowWidth, runAction, settle, translateX],
   );
 
-  const runAction = useCallback(() => {
-    if (disabled) return;
-    settle(false);
-    onAction();
-  }, [disabled, onAction, settle]);
-
   return (
-    <View style={stylesStatic.swipeActionClip}>
+    <View
+      onLayout={(event) => {
+        const nextWidth = event.nativeEvent.layout.width;
+        if (nextWidth > 0 && Math.abs(nextWidth - rowWidth) > 0.5)
+          setRowWidth(nextWidth);
+      }}
+      style={stylesStatic.swipeActionClip}
+    >
       <View
         pointerEvents={open ? "auto" : "none"}
-        style={[
-          stylesStatic.swipeActionRail,
-          { width: actionWidth, backgroundColor: actionColor },
-        ]}
+        accessibilityElementsHidden={!open}
+        importantForAccessibility={open ? "auto" : "no-hide-descendants"}
+        style={[stylesStatic.swipeActionRail, { backgroundColor: actionColor }]}
       >
         <Pressable
           accessibilityRole="button"
@@ -166,6 +191,7 @@ export function SwipeActionRow({
           onPress={runAction}
           style={({ pressed }) => [
             stylesStatic.swipeActionButton,
+            { width: actionWidth },
             pressed && stylesStatic.swipeActionPressed,
           ]}
         >
@@ -991,6 +1017,7 @@ const stylesStatic = StyleSheet.create({
   swipeActionRail: {
     position: "absolute",
     top: 0,
+    left: 0,
     right: 0,
     bottom: 0,
     alignItems: "stretch",
@@ -998,6 +1025,7 @@ const stylesStatic = StyleSheet.create({
   },
   swipeActionButton: {
     flex: 1,
+    alignSelf: "flex-end",
     minWidth: 44,
     alignItems: "center",
     justifyContent: "center",
