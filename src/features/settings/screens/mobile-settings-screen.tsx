@@ -43,7 +43,8 @@ export default function MobileSettingsScreen() {
   const pullRefresh = usePullToRefresh(() => devices.refetch());
   const locale = language === "vi" ? "vi-VN" : "en-US";
   const [updateDialogKind, setUpdateDialogKind] =
-    useState<UpdateDialogKind | null>(null);
+    useState<UpdateDialogKind>("up-to-date");
+  const [updateDialogVisible, setUpdateDialogVisible] = useState(false);
   const updateProgressPercent =
     updateProgress == null ? null : Math.round(updateProgress * 100);
   const updateActivityLabel =
@@ -124,6 +125,7 @@ export default function MobileSettingsScreen() {
       } else {
         setUpdateDialogKind("unavailable");
       }
+      setUpdateDialogVisible(true);
     } catch (error) {
       presentError(
         language === "vi"
@@ -135,7 +137,7 @@ export default function MobileSettingsScreen() {
   };
 
   const handleApplyUpdate = () => {
-    setUpdateDialogKind(null);
+    setUpdateDialogVisible(false);
     void applyUpdate().catch((error) =>
       presentError(
         language === "vi" ? "Không thể cập nhật" : "Update failed",
@@ -554,7 +556,7 @@ export default function MobileSettingsScreen() {
       ) : null}
 
       <AppDialog
-        visible={updateDialogKind !== null}
+        visible={updateDialogVisible}
         icon={
           updateDialogKind === "available"
             ? "cloud-download-outline"
@@ -601,17 +603,17 @@ export default function MobileSettingsScreen() {
           onPress:
             updateDialogKind === "available"
               ? handleApplyUpdate
-              : () => setUpdateDialogKind(null),
+              : () => setUpdateDialogVisible(false),
         }}
         secondaryAction={
           updateDialogKind === "available"
             ? {
                 label: language === "vi" ? "Để sau" : "Later",
-                onPress: () => setUpdateDialogKind(null),
+                onPress: () => setUpdateDialogVisible(false),
               }
             : undefined
         }
-        onRequestClose={() => setUpdateDialogKind(null)}
+        onRequestClose={() => setUpdateDialogVisible(false)}
         ui={ui}
       />
     </Screen>
