@@ -889,6 +889,9 @@ export default function IssueDetailScreen() {
           </MotionPressable>
         </View>
 
+        {/* Expo UI's Android dialog picker mounts a Compose Host. Keep that host
+            out of the ScrollView flow so opening the native dialog cannot remeasure
+            the bottom-sheet content and shift the Date/quick-action spacing. */}
         {Platform.OS === "android" && duePickerMode ? (
           <NativeDateTimePicker
             value={dueAt}
@@ -901,6 +904,7 @@ export default function IssueDetailScreen() {
             negativeButton={{ label: language === "vi" ? "Hủy" : "Cancel" }}
             onValueChange={(_, selected) => applyDueSelection(selected)}
             onDismiss={() => setDuePickerMode(null)}
+            style={styles.androidDateDialogHost}
           />
         ) : null}
       </BottomSheet>
@@ -1532,6 +1536,11 @@ const createStyles = (ui: AppTheme) =>
       flexWrap: "wrap",
       gap: 8,
       paddingTop: 2,
+    },
+    androidDateDialogHost: {
+      position: "absolute",
+      width: 0,
+      height: 0,
     },
     dueQuickAction: {
       minHeight: Platform.OS === "android" ? 48 : 44,
