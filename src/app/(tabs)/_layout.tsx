@@ -114,7 +114,9 @@ function AndroidTabItem({
       testID={create ? "android-create-action" : undefined}
       android_ripple={{
         color: create ? ui.colors.accentSoft : ui.colors.surfaceContainerHigh,
-        borderless: false,
+        borderless: true,
+        foreground: true,
+        radius: 28,
       }}
       onPress={onPress}
       onLongPress={onLongPress}
