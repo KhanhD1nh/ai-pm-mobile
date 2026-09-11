@@ -78,7 +78,7 @@ export async function registerForPushNotifications() {
       )
     ) {
       throw new Error(
-        "IPA hiện tại chưa được ký bằng provisioning profile có Push Notifications (aps-environment). Hãy ký lại bằng App ID explicit có APNs rồi cài lại app.",
+        "Bản ứng dụng hiện tại chưa được cấp quyền Push Notifications (aps-environment). Hãy cài lại bản đã được ký bằng App ID có APNs.",
       );
     }
     throw error;
