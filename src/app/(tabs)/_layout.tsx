@@ -17,60 +17,69 @@ import { LoadingScreen } from "@/shared/components/ui/screen";
 import type { AppTheme } from "@/shared/components/ui/theme";
 import { useAppPreferences } from "@/shared/preferences/app-preferences-context";
 
-function AndroidTabIcon({
+function AndroidTabItem({
   ui,
   focused,
+  label,
+  accessibilityLabel,
   icon,
   iconActive,
+  create = false,
+  onPress,
+  onLongPress,
 }: {
   ui: AppTheme;
   focused: boolean;
+  label: string;
+  accessibilityLabel: string;
   icon: React.ComponentProps<typeof Ionicons>["name"];
   iconActive: React.ComponentProps<typeof Ionicons>["name"];
+  create?: boolean;
+  onPress: () => void;
+  onLongPress?: () => void;
 }) {
   const styles = useMemo(() => createStyles(ui), [ui]);
+  const iconColor = create
+    ? ui.colors.inverseText
+    : focused
+      ? ui.colors.onPrimaryContainer
+      : ui.colors.textSecondary;
+
   return (
-    <View style={[styles.tabIconShell, focused && styles.tabIconShellActive]}>
+    <MotionPressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={create ? undefined : { selected: focused }}
+      testID={create ? "android-create-action" : undefined}
+      android_ripple={{
+        color: create ? ui.colors.accentSoft : ui.colors.surfaceContainerHigh,
+        borderless: false,
+      }}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={[
+        styles.androidTabItem,
+        focused && !create && styles.androidTabItemActive,
+        create && styles.androidCreateItem,
+      ]}
+    >
       <Ionicons
         accessible={false}
         name={focused ? iconActive : icon}
-        size={24}
-        color={focused ? ui.colors.onPrimaryContainer : ui.colors.textSecondary}
-      />
-    </View>
-  );
-}
-
-function AndroidCreateTabButton({
-  ui,
-  label,
-  accessibilityLabel,
-}: {
-  ui: AppTheme;
-  label: string;
-  accessibilityLabel: string;
-}) {
-  const styles = useMemo(() => createStyles(ui), [ui]);
-
-  return (
-    <View style={styles.createSlot}>
-      <MotionPressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        testID="android-create-fab"
-        android_ripple={{ color: ui.colors.accentSoft, borderless: false }}
-        onPress={() => router.push("/quick-create")}
-        style={styles.createFab}
+        size={create ? 24 : 22}
+        color={iconColor}
+      ></Ionicons>
+      <Text
+        numberOfLines={1}
+        style={[
+          styles.androidTabLabel,
+          focused && !create && styles.androidTabLabelActive,
+          create && styles.androidCreateLabel,
+        ]}
       >
-        <Ionicons
-          accessible={false}
-          name="add"
-          size={30}
-          color={ui.colors.inverseText}
-        />
-      </MotionPressable>
-      <Text style={styles.createLabel}>{label}</Text>
-    </View>
+        {label}
+      </Text>
+    </MotionPressable>
   );
 }
 
@@ -95,24 +104,85 @@ function AndroidTabs({
   return (
     <Tabs
       backBehavior="history"
+      tabBar={({ state, descriptors, navigation }) => (
+        <View
+          style={[
+            styles.androidTabBarArea,
+            { paddingBottom: Math.max(insets.bottom, 8) },
+          ]}
+        >
+          <View style={styles.androidTabBar}>
+            {state.routes.map((route, index) => {
+              const focused = state.index === index;
+              const options = descriptors[route.key].options;
+              const label =
+                typeof options.title === "string" ? options.title : route.name;
+              const accessibilityLabel =
+                typeof options.tabBarAccessibilityLabel === "string"
+                  ? options.tabBarAccessibilityLabel
+                  : label;
+              const create = route.name === "(create)";
+              const icons: [
+                React.ComponentProps<typeof Ionicons>["name"],
+                React.ComponentProps<typeof Ionicons>["name"],
+              ] =
+                route.name === "(home)"
+                  ? ["home-outline", "home"]
+                  : route.name === "(projects)"
+                    ? ["folder-outline", "folder"]
+                    : route.name === "(inbox)"
+                      ? ["chatbubble-outline", "chatbubble"]
+                      : route.name === "(more)"
+                        ? ["settings-outline", "settings"]
+                        : ["add", "add"];
+
+              const onPress = () => {
+                if (create) {
+                  router.push("/quick-create");
+                  return;
+                }
+
+                const event = navigation.emit({
+                  type: "tabPress",
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+
+                if (!focused && !event.defaultPrevented) {
+                  navigation.navigate(route.name, route.params);
+                }
+              };
+
+              const onLongPress = create
+                ? undefined
+                : () =>
+                    navigation.emit({
+                      type: "tabLongPress",
+                      target: route.key,
+                    });
+
+              return (
+                <AndroidTabItem
+                  key={route.key}
+                  ui={ui}
+                  focused={focused}
+                  label={label}
+                  accessibilityLabel={accessibilityLabel}
+                  icon={icons[0]}
+                  iconActive={icons[1]}
+                  create={create}
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                />
+              );
+            })}
+          </View>
+        </View>
+      )}
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: ui.colors.bg },
         tabBarHideOnKeyboard: true,
-        tabBarShowLabel: true,
-        tabBarLabelPosition: "below-icon",
-        tabBarActiveTintColor: ui.colors.accentStrong,
-        tabBarInactiveTintColor: ui.colors.textSecondary,
-        tabBarItemStyle: styles.tabItem,
-        tabBarIconStyle: styles.tabIconLayout,
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarStyle: [
-          styles.tabBar,
-          {
-            height: 64 + insets.bottom,
-            paddingBottom: insets.bottom,
-          },
-        ],
       }}
     >
       <Tabs.Screen
@@ -120,14 +190,6 @@ function AndroidTabs({
         options={{
           title: homeLabel,
           tabBarAccessibilityLabel: homeLabel,
-          tabBarIcon: ({ focused }) => (
-            <AndroidTabIcon
-              ui={ui}
-              focused={focused}
-              icon="home-outline"
-              iconActive="home"
-            />
-          ),
         }}
       />
       <Tabs.Screen
@@ -135,30 +197,14 @@ function AndroidTabs({
         options={{
           title: projectsLabel,
           tabBarAccessibilityLabel: projectsLabel,
-          tabBarIcon: ({ focused }) => (
-            <AndroidTabIcon
-              ui={ui}
-              focused={focused}
-              icon="folder-outline"
-              iconActive="folder"
-            />
-          ),
         }}
       />
       <Tabs.Screen
         name="(create)"
         options={{
           title: createLabel,
-          tabBarLabel: () => null,
-          tabBarButton: () => (
-            <AndroidCreateTabButton
-              ui={ui}
-              label={createLabel}
-              accessibilityLabel={
-                createLabel === "Tạo" ? "Tạo công việc" : "Create task"
-              }
-            />
-          ),
+          tabBarAccessibilityLabel:
+            createLabel === "Tạo" ? "Tạo công việc" : "Create task",
         }}
       />
       <Tabs.Screen
@@ -166,14 +212,6 @@ function AndroidTabs({
         options={{
           title: inboxLabel,
           tabBarAccessibilityLabel: inboxLabel,
-          tabBarIcon: ({ focused }) => (
-            <AndroidTabIcon
-              ui={ui}
-              focused={focused}
-              icon="chatbubble-outline"
-              iconActive="chatbubble"
-            />
-          ),
         }}
       />
       <Tabs.Screen
@@ -181,14 +219,6 @@ function AndroidTabs({
         options={{
           title: settingsLabel,
           tabBarAccessibilityLabel: settingsLabel,
-          tabBarIcon: ({ focused }) => (
-            <AndroidTabIcon
-              ui={ui}
-              focused={focused}
-              icon="settings-outline"
-              iconActive="settings"
-            />
-          ),
         }}
       />
     </Tabs>
@@ -359,69 +389,64 @@ export default function TabsLayout() {
 
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
-    tabBar: {
-      paddingTop: 0,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: ui.colors.border,
-      backgroundColor: ui.colors.surface,
-      elevation: 0,
-      shadowColor: ui.colors.shadow,
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: -3 },
-    },
-    tabItem: {
-      height: 64,
+    androidTabBarArea: {
       paddingTop: 6,
-      paddingBottom: 6,
+      paddingHorizontal: 12,
+      backgroundColor: ui.colors.bg,
     },
-    tabIconLayout: {
-      width: 56,
-      height: 32,
-      marginTop: 0,
-      marginBottom: 0,
-    },
-    tabLabel: {
-      height: 16,
-      fontSize: 12,
-      lineHeight: 16,
-      fontWeight: "500",
-      marginTop: 4,
-      marginBottom: 0,
-    },
-    tabIconShell: {
-      width: 56,
-      height: 32,
-      borderRadius: 16,
+    androidTabBar: {
+      height: 64,
+      padding: 4,
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
-    },
-    tabIconShellActive: { backgroundColor: ui.colors.primaryContainer },
-    createSlot: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "flex-start",
-    },
-    createFab: {
-      width: 56,
-      height: 56,
-      borderRadius: 18,
-      marginTop: -22,
-      alignItems: "center",
-      justifyContent: "center",
+      gap: 2,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: ui.colors.border,
+      borderRadius: 24,
+      backgroundColor: ui.colors.surface,
       overflow: "hidden",
-      backgroundColor: ui.colors.accentStrong,
       shadowColor: ui.colors.shadow,
-      shadowOpacity: 0.2,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 8,
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 5,
     },
-    createLabel: {
+    androidTabItem: {
+      flex: 1,
+      minWidth: 0,
+      height: 56,
+      paddingHorizontal: 2,
+      borderRadius: 20,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 2,
+      overflow: "hidden",
+    },
+    androidTabItemActive: {
+      backgroundColor: ui.colors.primaryContainer,
+    },
+    androidTabLabel: {
+      maxWidth: "100%",
       color: ui.colors.textSecondary,
       fontSize: 11,
       lineHeight: 14,
-      fontWeight: "600",
-      marginTop: 3,
+      fontWeight: "500",
+      textAlign: "center",
+    },
+    androidTabLabelActive: {
+      color: ui.colors.onPrimaryContainer,
+      fontWeight: "700",
+    },
+    androidCreateItem: {
+      height: 52,
+      marginVertical: 2,
+      borderRadius: 18,
+      backgroundColor: ui.colors.accentStrong,
+    },
+    androidCreateLabel: {
+      color: ui.colors.inverseText,
+      fontSize: 11,
+      lineHeight: 14,
+      fontWeight: "700",
     },
   });
