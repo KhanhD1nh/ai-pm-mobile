@@ -298,13 +298,13 @@ export default function HomeScreen() {
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
     topBar: {
-      minHeight: 44,
+      minHeight: ui.header.actionSize,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
     },
-    hero: { paddingTop: 12, paddingBottom: 10 },
+    hero: { paddingTop: 10, paddingBottom: 10 },
     date: {
       color: ui.colors.textMuted,
       ...ui.typography.caption,

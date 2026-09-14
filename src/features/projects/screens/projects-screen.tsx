@@ -252,7 +252,7 @@ const createStyles = (ui: AppTheme) =>
     appBar: {
       paddingTop: 4,
       paddingBottom: 10,
-      gap: 12,
+      gap: 8,
     },
     topBar: {
       minHeight: ui.header.actionSize,

@@ -107,24 +107,17 @@ export function WorkspaceSwitcher() {
 const createStyles = (ui: AppTheme) =>
   StyleSheet.create({
     trigger: {
-      minHeight: Platform.OS === "android" ? 44 : 40,
+      minHeight: Platform.OS === "android" ? 48 : 44,
       maxWidth: "72%",
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      paddingVertical: 4,
-      paddingLeft: 4,
-      paddingRight: 10,
-      borderRadius: ui.radius.round,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: ui.colors.border,
-      backgroundColor: ui.colors.surface,
-      overflow: "hidden",
+      paddingRight: 4,
     },
     mark: {
-      width: 34,
-      height: 34,
-      borderRadius: 11,
+      width: 32,
+      height: 32,
+      borderRadius: 10,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: ui.colors.primaryContainer,
@@ -137,8 +130,8 @@ const createStyles = (ui: AppTheme) =>
     name: {
       minWidth: 0,
       flexShrink: 1,
-      color: ui.colors.text,
+      color: ui.colors.textSecondary,
       ...ui.typography.bodyStrong,
-      fontSize: 14,
+      fontSize: 13,
     },
   });
