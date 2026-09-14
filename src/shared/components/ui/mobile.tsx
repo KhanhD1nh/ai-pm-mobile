@@ -294,7 +294,6 @@ export function GlassIconButton({
       {({ pressed }) => (
         <LiquidGlassSurface
           variant="regular"
-          interactive
           colorScheme={themePreference === "system" ? "auto" : resolvedTheme}
           style={styles.glassIconButton}
           fallbackStyle={styles.glassIconFallback}
