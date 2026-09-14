@@ -1,9 +1,9 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Redirect, Tabs, router } from "expo-router";
+import { Redirect, Tabs, router, usePathname } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Platform, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -26,6 +26,106 @@ import { useAppPreferences } from "@/shared/preferences/app-preferences-context"
 
 const ANDROID_TAB_BAR_PADDING = 6;
 const ANDROID_TAB_INDICATOR_INSET = 3;
+
+type NestedNavigationState = {
+  index?: number;
+  routes?: { state?: NestedNavigationState }[];
+};
+
+function hasNestedBackHistory(state: unknown): boolean {
+  if (!state || typeof state !== "object") return false;
+
+  const navigationState = state as NestedNavigationState;
+  if (!navigationState.routes?.length) return false;
+
+  const activeIndex = navigationState.index ?? 0;
+  if (activeIndex > 0) return true;
+
+  return hasNestedBackHistory(navigationState.routes[activeIndex]?.state);
+}
+
+type AndroidTabBarRenderProps = Parameters<
+  NonNullable<React.ComponentProps<typeof Tabs>["tabBar"]>
+>[0];
+
+function AndroidBackCoordinator({
+  state,
+  navigation,
+}: Pick<AndroidTabBarRenderProps, "state" | "navigation">) {
+  const pathname = usePathname();
+  const activeRoute = state.routes[state.index];
+  const activeRouteName = activeRoute?.name ?? "(home)";
+  const tabHistoryRef = useRef<string[]>([activeRouteName]);
+  const restoringHistoryRef = useRef(false);
+
+  useEffect(() => {
+    const history = tabHistoryRef.current;
+
+    if (restoringHistoryRef.current) {
+      restoringHistoryRef.current = false;
+      if (history[history.length - 1] !== activeRouteName) {
+        tabHistoryRef.current = [...history, activeRouteName];
+      }
+      return;
+    }
+
+    if (history[history.length - 1] === activeRouteName) return;
+
+    tabHistoryRef.current = [
+      ...history.filter((routeName) => routeName !== activeRouteName),
+      activeRouteName,
+    ];
+  }, [activeRouteName]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        // Root-stack modals must be dismissed by their own navigator instead of
+        // changing the tab underneath them.
+        if (pathname === "/quick-create") return false;
+
+        const currentRoute = state.routes[state.index];
+
+        // Pop the active tab's nested stack first (detail/search/project pages).
+        if (hasNestedBackHistory(currentRoute?.state)) {
+          router.back();
+          return true;
+        }
+
+        // Then walk the user's tab visit history. We keep this explicitly instead
+        // of relying on the root BackHandler chain, which can fall through to the
+        // Android Activity and send the app to the launcher.
+        const history = tabHistoryRef.current;
+        if (history.length > 1) {
+          history.pop();
+          const previousRouteName = history[history.length - 1];
+          if (previousRouteName) {
+            restoringHistoryRef.current = true;
+            navigation.navigate(previousRouteName);
+            return true;
+          }
+        }
+
+        // A deep link or restored session can enter a non-home tab without tab
+        // history. Give Android users a deterministic in-app back destination.
+        if (currentRoute?.name !== "(home)") {
+          tabHistoryRef.current = ["(home)"];
+          restoringHistoryRef.current = true;
+          navigation.navigate("(home)");
+          return true;
+        }
+
+        // Only the true Home root is allowed to leave the app.
+        return false;
+      },
+    );
+
+    return () => subscription.remove();
+  }, [navigation, pathname, state]);
+
+  return null;
+}
 
 function AndroidTabIndicator({
   ui,
@@ -165,93 +265,98 @@ function AndroidTabs({
     <Tabs
       backBehavior="history"
       tabBar={({ state, descriptors, navigation }) => (
-        <View
-          style={[
-            styles.androidTabBarArea,
-            { paddingBottom: Math.max(insets.bottom, 8) },
-          ]}
-        >
+        <>
+          <AndroidBackCoordinator state={state} navigation={navigation} />
           <View
-            onLayout={(event) => {
-              const width = event.nativeEvent.layout.width;
-              setTabBarWidth((current) =>
-                Math.abs(current - width) > 0.5 ? width : current,
-              );
-            }}
-            style={styles.androidTabBar}
+            style={[
+              styles.androidTabBarArea,
+              { paddingBottom: Math.max(insets.bottom, 8) },
+            ]}
           >
-            <AndroidTabIndicator
-              ui={ui}
-              index={state.index}
-              count={state.routes.length}
-              barWidth={tabBarWidth}
-            />
-            {state.routes.map((route, index) => {
-              const focused = state.index === index;
-              const options = descriptors[route.key].options;
-              const label =
-                typeof options.title === "string" ? options.title : route.name;
-              const accessibilityLabel =
-                typeof options.tabBarAccessibilityLabel === "string"
-                  ? options.tabBarAccessibilityLabel
-                  : label;
-              const create = route.name === "(create)";
-              const icons: [
-                React.ComponentProps<typeof Ionicons>["name"],
-                React.ComponentProps<typeof Ionicons>["name"],
-              ] =
-                route.name === "(home)"
-                  ? ["home-outline", "home"]
-                  : route.name === "(projects)"
-                    ? ["folder-outline", "folder"]
-                    : route.name === "(inbox)"
-                      ? ["chatbubble-outline", "chatbubble"]
-                      : route.name === "(more)"
-                        ? ["settings-outline", "settings"]
-                        : ["add", "add"];
+            <View
+              onLayout={(event) => {
+                const width = event.nativeEvent.layout.width;
+                setTabBarWidth((current) =>
+                  Math.abs(current - width) > 0.5 ? width : current,
+                );
+              }}
+              style={styles.androidTabBar}
+            >
+              <AndroidTabIndicator
+                ui={ui}
+                index={state.index}
+                count={state.routes.length}
+                barWidth={tabBarWidth}
+              />
+              {state.routes.map((route, index) => {
+                const focused = state.index === index;
+                const options = descriptors[route.key].options;
+                const label =
+                  typeof options.title === "string"
+                    ? options.title
+                    : route.name;
+                const accessibilityLabel =
+                  typeof options.tabBarAccessibilityLabel === "string"
+                    ? options.tabBarAccessibilityLabel
+                    : label;
+                const create = route.name === "(create)";
+                const icons: [
+                  React.ComponentProps<typeof Ionicons>["name"],
+                  React.ComponentProps<typeof Ionicons>["name"],
+                ] =
+                  route.name === "(home)"
+                    ? ["home-outline", "home"]
+                    : route.name === "(projects)"
+                      ? ["folder-outline", "folder"]
+                      : route.name === "(inbox)"
+                        ? ["chatbubble-outline", "chatbubble"]
+                        : route.name === "(more)"
+                          ? ["settings-outline", "settings"]
+                          : ["add", "add"];
 
-              const onPress = () => {
-                if (create) {
-                  router.push("/quick-create");
-                  return;
-                }
+                const onPress = () => {
+                  if (create) {
+                    router.push("/quick-create");
+                    return;
+                  }
 
-                const event = navigation.emit({
-                  type: "tabPress",
-                  target: route.key,
-                  canPreventDefault: true,
-                });
+                  const event = navigation.emit({
+                    type: "tabPress",
+                    target: route.key,
+                    canPreventDefault: true,
+                  });
 
-                if (!focused && !event.defaultPrevented) {
-                  navigation.navigate(route.name, route.params);
-                }
-              };
+                  if (!focused && !event.defaultPrevented) {
+                    navigation.navigate(route.name, route.params);
+                  }
+                };
 
-              const onLongPress = create
-                ? undefined
-                : () =>
-                    navigation.emit({
-                      type: "tabLongPress",
-                      target: route.key,
-                    });
+                const onLongPress = create
+                  ? undefined
+                  : () =>
+                      navigation.emit({
+                        type: "tabLongPress",
+                        target: route.key,
+                      });
 
-              return (
-                <AndroidTabItem
-                  key={route.key}
-                  ui={ui}
-                  focused={focused}
-                  label={label}
-                  accessibilityLabel={accessibilityLabel}
-                  icon={icons[0]}
-                  iconActive={icons[1]}
-                  create={create}
-                  onPress={onPress}
-                  onLongPress={onLongPress}
-                />
-              );
-            })}
+                return (
+                  <AndroidTabItem
+                    key={route.key}
+                    ui={ui}
+                    focused={focused}
+                    label={label}
+                    accessibilityLabel={accessibilityLabel}
+                    icon={icons[0]}
+                    iconActive={icons[1]}
+                    create={create}
+                    onPress={onPress}
+                    onLongPress={onLongPress}
+                  />
+                );
+              })}
+            </View>
           </View>
-        </View>
+        </>
       )}
       screenOptions={{
         headerShown: false,
