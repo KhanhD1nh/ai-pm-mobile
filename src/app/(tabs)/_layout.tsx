@@ -251,7 +251,6 @@ function AndroidTabItem({
           styles.androidTabLabel,
           focused && !create && styles.androidTabLabelActive,
           create && styles.androidCreateLabel,
-          create && focused && styles.androidCreateLabelActive,
         ]}
       >
         {label}
@@ -650,9 +649,6 @@ const createStyles = (ui: AppTheme) =>
       fontSize: 11,
       lineHeight: 14,
       fontWeight: "600",
-    },
-    androidCreateLabelActive: {
-      color: ui.colors.text,
     },
     androidCreateIconButton: {
       width: 30,
