@@ -132,11 +132,13 @@ function AndroidTabIndicator({
   index,
   count,
   barWidth,
+  createActive,
 }: {
   ui: AppTheme;
   index: number;
   count: number;
   barWidth: number;
+  createActive: boolean;
 }) {
   const styles = useMemo(() => createStyles(ui), [ui]);
   const reduceMotion = useReducedMotion();
@@ -173,7 +175,11 @@ function AndroidTabIndicator({
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.androidTabIndicator, animatedStyle]}
+      style={[
+        styles.androidTabIndicator,
+        createActive && styles.androidCreateTabIndicator,
+        animatedStyle,
+      ]}
     />
   );
 }
@@ -200,10 +206,10 @@ function AndroidTabItem({
   onLongPress?: () => void;
 }) {
   const styles = useMemo(() => createStyles(ui), [ui]);
-  const iconColor = focused
-    ? ui.colors.onPrimaryContainer
-    : create
-      ? ui.colors.accentStrong
+  const iconColor = create
+    ? ui.colors.inverseText
+    : focused
+      ? ui.colors.onPrimaryContainer
       : ui.colors.textSecondary;
 
   return (
@@ -222,18 +228,30 @@ function AndroidTabItem({
       onLongPress={onLongPress}
       style={styles.androidTabItem}
     >
-      <Ionicons
-        accessible={false}
-        name={focused ? iconActive : icon}
-        size={22}
-        color={iconColor}
-      ></Ionicons>
+      {create ? (
+        <View style={styles.androidCreateIconButton}>
+          <Ionicons
+            accessible={false}
+            name={focused ? iconActive : icon}
+            size={20}
+            color={iconColor}
+          />
+        </View>
+      ) : (
+        <Ionicons
+          accessible={false}
+          name={focused ? iconActive : icon}
+          size={22}
+          color={iconColor}
+        />
+      )}
       <Text
         numberOfLines={1}
         style={[
           styles.androidTabLabel,
           focused && !create && styles.androidTabLabelActive,
           create && styles.androidCreateLabel,
+          create && focused && styles.androidCreateLabelActive,
         ]}
       >
         {label}
@@ -287,6 +305,7 @@ function AndroidTabs({
                 index={state.index}
                 count={state.routes.length}
                 barWidth={tabBarWidth}
+                createActive={state.routes[state.index]?.name === "(create)"}
               />
               {state.routes.map((route, index) => {
                 const focused = state.index === index;
@@ -599,6 +618,9 @@ const createStyles = (ui: AppTheme) =>
       borderRadius: 28,
       backgroundColor: ui.colors.primaryContainer,
     },
+    androidCreateTabIndicator: {
+      backgroundColor: ui.colors.surfaceContainerHigh,
+    },
     androidTabItem: {
       zIndex: 1,
       flex: 1,
@@ -628,5 +650,16 @@ const createStyles = (ui: AppTheme) =>
       fontSize: 11,
       lineHeight: 14,
       fontWeight: "600",
+    },
+    androidCreateLabelActive: {
+      color: ui.colors.text,
+    },
+    androidCreateIconButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: ui.colors.accentStrong,
     },
   });
